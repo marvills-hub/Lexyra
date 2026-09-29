@@ -14,8 +14,7 @@ const json = (data: unknown, status = 200) =>
     },
   });
 
-const allowedMethod = (request: Request, method: string) =>
-  request.method.toUpperCase() === method;
+const allowedMethod = (request: Request, method: string) => request.method.toUpperCase() === method;
 
 export default {
   async fetch(request, env): Promise<Response> {
@@ -127,10 +126,7 @@ export default {
       } catch (error) {
         return json(
           {
-            error:
-              error instanceof Error
-                ? error.message
-                : 'Lexyra AI request failed.',
+            error: error instanceof Error ? error.message : 'Lexyra AI request failed.',
           },
           500,
         );

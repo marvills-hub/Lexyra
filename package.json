@@ -1,4 +1,4 @@
-{
+﻿{
   "name": "lexyra",
   "version": "0.0.0",
   "scripts": {
@@ -6,7 +6,10 @@
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "cloud:dev": "npm run build \u0026\u0026 wrangler dev",
+    "cloud:deploy": "npm run build \u0026\u0026 wrangler deploy",
+    "cloud:types": "wrangler types"
   },
   "private": true,
   "packageManager": "npm@11.12.1",
@@ -28,6 +31,7 @@
     "jsdom": "^30.0.0",
     "prettier": "^3.8.1",
     "typescript": "~6.0.2",
-    "vitest": "^5.0.0"
+    "vitest": "^5.0.0",
+    "wrangler": "^4.143.0"
   }
 }

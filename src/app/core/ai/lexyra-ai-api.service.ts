@@ -30,9 +30,7 @@ export class LexyraAiApiService {
       return true;
     } catch (error) {
       this.status.set('offline');
-      this.error.set(
-        error instanceof Error ? error.message : 'Unable to connect to Lexyra AI.',
-      );
+      this.error.set(error instanceof Error ? error.message : 'Unable to connect to Lexyra AI.');
       return false;
     }
   }
@@ -93,9 +91,7 @@ export class LexyraAiApiService {
       }
 
       this.status.set('error');
-      this.error.set(
-        error instanceof Error ? error.message : 'Lexyra AI generation failed.',
-      );
+      this.error.set(error instanceof Error ? error.message : 'Lexyra AI generation failed.');
       throw error;
     } finally {
       this.controller = null;

@@ -33,12 +33,7 @@ export class LexyraAiService {
   }
 
   async run(text: string) {
-    const prompt = buildAiPrompt(
-      this.action(),
-      text,
-      this.instruction(),
-      this.language(),
-    );
+    const prompt = buildAiPrompt(this.action(), text, this.instruction(), this.language());
 
     if (!prompt.trim()) throw new Error('Enter text or an AI instruction first.');
 

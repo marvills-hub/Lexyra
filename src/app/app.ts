@@ -1595,4 +1595,3 @@ export class App implements AfterViewChecked {
     localStorage.setItem('lexyra.theme', t);
   }
 }
-

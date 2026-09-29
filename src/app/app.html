@@ -459,7 +459,7 @@
                   </button>
                 </div>
               </div>
-<div class="ai-controls">
+              <div class="ai-controls">
                 <div class="ai-cloud-provider">
                   <i data-lucide="cloud"></i>
                   <span>
@@ -571,7 +571,10 @@
                     @if (ai.api.status() === 'offline') {
                       <i data-lucide="unplug"></i>
                       <strong>Lexyra AI is unavailable</strong>
-                      <span>The cloud AI service could not be reached. Manual tools remain available.</span>
+                      <span
+                        >The cloud AI service could not be reached. Manual tools remain
+                        available.</span
+                      >
                       <button type="button" (click)="refreshAiModels()">
                         <i data-lucide="refresh-cw"></i>
                         Retry
@@ -816,4 +819,3 @@
     </div>
   }
 </div>
-
