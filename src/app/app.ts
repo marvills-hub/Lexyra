@@ -13,6 +13,7 @@ import { createIcons, icons } from 'lucide';
 import { TextEngine } from './core/engine/text-engine';
 import { TextWorkspaceService } from './core/services/text-workspace.service';
 import { TEXT_TOOLS, TOOL_CATEGORIES } from './shared/constants/tools';
+import { ToolCategoryItem } from './core/models/text-tool.model';
 
 @Component({
   selector: 'app-root',
@@ -25,21 +26,20 @@ export class App implements AfterViewChecked {
   @ViewChild('editor') editor?: ElementRef<HTMLTextAreaElement>;
   tools = TEXT_TOOLS;
   categories = TOOL_CATEGORIES;
-  menu = signal<string | null>(null);
-  toolsOpen = signal(false);
-  aiOpen = signal(false);
-  query = signal('');
-  category = signal('all');
+  category = signal<ToolCategoryItem['id']>('format');
+  search = signal('');
+  result = signal('');
+  resultTitle = signal('');
+  resultOpen = signal(false);
   dark = signal(localStorage.getItem('lexyra.theme') !== 'light');
   copied = signal(false);
+  resultCopied = signal(false);
   saved = signal(true);
   findText = '';
   replaceText = '';
-  selectedStart = 0;
-  selectedEnd = 0;
-  filteredTools = computed(() => {
-    const q = this.query().trim().toLowerCase();
-    const c = this.category();
+  visibleTools = computed(() => {
+    const c = this.category(),
+      q = this.search().trim().toLowerCase();
     return this.tools.filter(
       (t) =>
         (c === 'all' || t.category === c) &&
@@ -54,10 +54,6 @@ export class App implements AfterViewChecked {
   }
   @HostListener('document:keydown', ['$event'])
   keydown(e: KeyboardEvent) {
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
-      e.preventDefault();
-      this.openTools();
-    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
       e.preventDefault();
       this.workspace.undo();
@@ -69,29 +65,39 @@ export class App implements AfterViewChecked {
       e.preventDefault();
       this.workspace.redo();
     }
-    if (e.key === 'Escape') {
-      this.closePanels();
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      document.getElementById('toolSearch')?.focus();
     }
+    if (e.key === 'Escape') this.resultOpen.set(false);
   }
-  update(value: string) {
+  selectCategory(id: ToolCategoryItem['id']) {
+    this.category.set(id);
+    this.search.set('');
+  }
+  update(v: string) {
     this.saved.set(false);
-    this.workspace.set(value, false);
-    setTimeout(() => this.saved.set(true), 300);
+    this.workspace.set(v, false);
+    setTimeout(() => this.saved.set(true), 250);
   }
-  captureSelection() {
-    const e = this.editor?.nativeElement;
-    if (e) {
-      this.selectedStart = e.selectionStart;
-      this.selectedEnd = e.selectionEnd;
-    }
+  source() {
+    const e = this.editor?.nativeElement,
+      t = this.workspace.text();
+    if (e && e.selectionStart !== e.selectionEnd)
+      return {
+        text: t.slice(e.selectionStart, e.selectionEnd),
+        start: e.selectionStart,
+        end: e.selectionEnd,
+        selected: true,
+      };
+    return { text: t, start: 0, end: t.length, selected: false };
   }
-  async execute(id: string) {
-    const full = this.workspace.text();
-    const e = this.editor?.nativeElement;
-    const hasSelection = !!e && e.selectionStart !== e.selectionEnd;
-    const source = hasSelection ? full.slice(e!.selectionStart, e!.selectionEnd) : full;
-    let result = source;
-    const op: Record<string, (x: string) => string> = {
+  async run(id: string) {
+    const tool = this.tools.find((t) => t.id === id);
+    if (!tool) return;
+    const src = this.source();
+    let output = src.text;
+    const ops: Record<string, (x: string) => string> = {
       upper: TextEngine.upper,
       lower: TextEngine.lower,
       title: TextEngine.title,
@@ -155,58 +161,68 @@ export class App implements AfterViewChecked {
       timestamp: () => TextEngine.timestamp(),
     };
     if (id === 'sha256') {
-      const bytes = new TextEncoder().encode(source);
-      const hash = await crypto.subtle.digest('SHA-256', bytes);
-      result = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
+      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src.text));
+      output = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
     } else {
-      const fn = op[id];
+      const fn = ops[id];
       if (!fn) return;
-      result = fn(source);
+      output = fn(src.text);
     }
-    if (hasSelection) {
-      const start = e!.selectionStart,
-        end = e!.selectionEnd;
-      this.workspace.set(full.slice(0, start) + result + full.slice(end));
+    if (tool.behavior === 'result') {
+      this.resultTitle.set(tool.name);
+      this.result.set(output);
+      this.resultOpen.set(true);
+      return;
+    }
+    const current = this.workspace.text();
+    if (src.selected) {
+      this.workspace.set(current.slice(0, src.start) + output + current.slice(src.end));
       setTimeout(() => {
-        e!.focus();
-        e!.setSelectionRange(start, start + result.length);
-      }, 0);
-    } else this.workspace.set(result);
-  }
-  quick(id: string) {
-    this.execute(id);
-    this.menu.set(null);
+        const e = this.editor?.nativeElement;
+        e?.focus();
+        e?.setSelectionRange(src.start, src.start + output.length);
+      });
+    } else this.workspace.set(output);
   }
   replace() {
     if (this.findText)
       this.workspace.set(this.workspace.text().split(this.findText).join(this.replaceText));
   }
-  openTools(category = 'all') {
-    this.category.set(category);
-    this.query.set('');
-    this.toolsOpen.set(true);
-    this.aiOpen.set(false);
-    this.menu.set(null);
+  insertResult() {
+    const e = this.editor?.nativeElement;
+    const current = this.workspace.text();
+    if (!e) {
+      this.workspace.set(current + this.result());
+      return;
+    }
+    const start = e.selectionStart,
+      end = e.selectionEnd;
+    const spacer = current && start === current.length && !current.endsWith('\n') ? '\n' : '';
+    const value = current.slice(0, start) + spacer + this.result() + current.slice(end);
+    this.workspace.set(value);
+    this.resultOpen.set(false);
+    setTimeout(() => e.focus());
   }
-  closePanels() {
-    this.toolsOpen.set(false);
-    this.aiOpen.set(false);
-    this.menu.set(null);
+  replaceWithResult() {
+    this.workspace.set(this.result());
+    this.resultOpen.set(false);
   }
-  toggleMenu(name: string) {
-    this.menu.set(this.menu() === name ? null : name);
-  }
-  async copy() {
+  async copyText() {
     await navigator.clipboard.writeText(this.workspace.text());
     this.copied.set(true);
-    setTimeout(() => this.copied.set(false), 1200);
+    setTimeout(() => this.copied.set(false), 1000);
+  }
+  async copyResult() {
+    await navigator.clipboard.writeText(this.result());
+    this.resultCopied.set(true);
+    setTimeout(() => this.resultCopied.set(false), 1000);
   }
   importFile(input: HTMLInputElement) {
     input.click();
   }
-  loadFile(event: Event) {
-    const input = event.target as HTMLInputElement;
-    const file = input.files?.[0];
+  loadFile(ev: Event) {
+    const input = ev.target as HTMLInputElement,
+      file = input.files?.[0];
     if (!file) return;
     const r = new FileReader();
     r.onload = () => this.workspace.set(String(r.result ?? ''));
@@ -214,9 +230,9 @@ export class App implements AfterViewChecked {
     input.value = '';
   }
   download() {
-    const b = new Blob([this.workspace.text()], { type: 'text/plain;charset=utf-8' });
-    const u = URL.createObjectURL(b);
-    const a = document.createElement('a');
+    const b = new Blob([this.workspace.text()], { type: 'text/plain;charset=utf-8' }),
+      u = URL.createObjectURL(b),
+      a = document.createElement('a');
     a.href = u;
     a.download = 'lexyra-text.txt';
     a.click();

@@ -2,207 +2,273 @@
 
 export class TextEngine {
   static stats(text: string): TextStats {
-    const trimmed = text.trim();
-    const words = trimmed ? trimmed.split(/\s+/).length : 0;
+    const t = text.trim(),
+      words = t ? t.split(/\s+/).length : 0;
     return {
       characters: text.length,
       charactersNoSpaces: text.replace(/\s/g, '').length,
       words,
-      sentences: trimmed ? (trimmed.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.length ?? 0) : 0,
-      paragraphs: trimmed ? text.split(/\n\s*\n/).filter((x) => x.trim()).length : 0,
+      sentences: t ? (t.match(/[^.!?]+[.!?]+|[^.!?]+$/g)?.length ?? 0) : 0,
+      paragraphs: t ? text.split(/\n\s*\n/).filter((x) => x.trim()).length : 0,
       lines: text ? text.split(/\r?\n/).length : 0,
       readingMinutes: words ? Math.max(1, Math.ceil(words / 200)) : 0,
     };
   }
-  static upper(text: string) {
-    return text.toUpperCase();
+  static upper(t: string) {
+    return t.toUpperCase();
   }
-  static lower(text: string) {
-    return text.toLowerCase();
+  static lower(t: string) {
+    return t.toLowerCase();
   }
-  static title(text: string) {
-    return text.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
+  static title(t: string) {
+    return t.toLowerCase().replace(/\b\w/g, (c) => c.toUpperCase());
   }
-  static sentence(text: string) {
-    return text.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, (c) => c.toUpperCase());
+  static sentence(t: string) {
+    return t.toLowerCase().replace(/(^\s*\w|[.!?]\s+\w)/g, (c) => c.toUpperCase());
   }
-  static camel(text: string) {
-    const w = this.words(text);
-    return w.map((x, i) => (i ? this.cap(x) : x.toLowerCase())).join('');
-  }
-  static pascal(text: string) {
-    return this.words(text)
-      .map((x) => this.cap(x))
+  static camel(t: string) {
+    return this.words(t)
+      .map((w, i) => (i ? this.cap(w) : w.toLowerCase()))
       .join('');
   }
-  static snake(text: string) {
-    return this.words(text)
-      .map((x) => x.toLowerCase())
+  static pascal(t: string) {
+    return this.words(t)
+      .map((w) => this.cap(w))
+      .join('');
+  }
+  static snake(t: string) {
+    return this.words(t)
+      .map((w) => w.toLowerCase())
       .join('_');
   }
-  static kebab(text: string) {
-    return this.words(text)
-      .map((x) => x.toLowerCase())
+  static kebab(t: string) {
+    return this.words(t)
+      .map((w) => w.toLowerCase())
       .join('-');
   }
-  static constant(text: string) {
-    return this.words(text)
-      .map((x) => x.toUpperCase())
+  static constant(t: string) {
+    return this.words(t)
+      .map((w) => w.toUpperCase())
       .join('_');
   }
-  static dot(text: string) {
-    return this.words(text)
-      .map((x) => x.toLowerCase())
+  static dot(t: string) {
+    return this.words(t)
+      .map((w) => w.toLowerCase())
       .join('.');
   }
-  static path(text: string) {
-    return this.words(text)
-      .map((x) => x.toLowerCase())
+  static path(t: string) {
+    return this.words(t)
+      .map((w) => w.toLowerCase())
       .join('/');
   }
-  static slug(text: string) {
-    return this.kebab(text).replace(/[^a-z0-9-]/g, '');
+  static slug(t: string) {
+    return this.removeDiacritics(t)
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
   }
-  static trim(text: string) {
-    return text.trim();
+  static trim(t: string) {
+    return t.trim();
   }
-  static cleanSpaces(text: string) {
-    return text
+  static cleanSpaces(t: string) {
+    return t
       .split(/\r?\n/)
       .map((x) => x.replace(/[ \t]+/g, ' ').trim())
       .join('\n');
   }
-  static removeEmptyLines(text: string) {
-    return text
+  static removeEmptyLines(t: string) {
+    return t
       .split(/\r?\n/)
       .filter((x) => x.trim())
       .join('\n');
   }
-  static removeDuplicateLines(text: string) {
+  static removeDuplicateLines(t: string) {
     const s = new Set<string>();
-    return text
+    return t
       .split(/\r?\n/)
-      .filter((x) => !s.has(x) && !!s.add(x))
+      .filter((x) => {
+        if (s.has(x)) return false;
+        s.add(x);
+        return true;
+      })
       .join('\n');
   }
-  static uniqueWords(text: string) {
-    return [...new Set(this.words(text).map((x) => x.toLowerCase()))].join('\n');
+  static uniqueWords(t: string) {
+    return [...new Set(this.words(t).map((x) => x.toLowerCase()))].join('\n');
   }
-  static sortAsc(text: string) {
-    return text
+  static removeDiacritics(t: string) {
+    return t.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  }
+  static normalizeUnicode(t: string) {
+    return t.normalize('NFC');
+  }
+  static removeHtml(t: string) {
+    const e = document.createElement('div');
+    e.innerHTML = t;
+    return e.textContent ?? '';
+  }
+  static sortAsc(t: string) {
+    return t
       .split(/\r?\n/)
       .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }))
       .join('\n');
   }
-  static sortDesc(text: string) {
-    return this.sortAsc(text).split('\n').reverse().join('\n');
+  static sortDesc(t: string) {
+    return this.sortAsc(t).split('\n').reverse().join('\n');
   }
-  static reverseLines(text: string) {
-    return text.split(/\r?\n/).reverse().join('\n');
+  static reverseLines(t: string) {
+    return t.split(/\r?\n/).reverse().join('\n');
   }
-  static reverseText(text: string) {
-    return [...text].reverse().join('');
+  static reverseText(t: string) {
+    return [...t].reverse().join('');
   }
-  static shuffleLines(text: string) {
-    const a = text.split(/\r?\n/);
+  static shuffleLines(t: string) {
+    const a = t.split(/\r?\n/);
     for (let i = a.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [a[i], a[j]] = [a[j], a[i]];
     }
     return a.join('\n');
   }
-  static numberLines(text: string) {
-    return text
+  static numberLines(t: string) {
+    return t
       .split(/\r?\n/)
       .map((x, i) => `${i + 1}. ${x}`)
       .join('\n');
   }
-  static bullets(text: string) {
-    return text
-      .split(/\r?\n/)
-      .map((x) => `• ${x.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '')}`)
-      .join('\n');
-  }
-  static removeLineNumbers(text: string) {
-    return text
+  static removeLineNumbers(t: string) {
+    return t
       .split(/\r?\n/)
       .map((x) => x.replace(/^\s*\d+[.):\-]\s*/, ''))
       .join('\n');
   }
-  static joinLines(text: string) {
-    return text
+  static bullets(t: string) {
+    return t
+      .split(/\r?\n/)
+      .map((x) => `• ${x.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '')}`)
+      .join('\n');
+  }
+  static joinLines(t: string) {
+    return t
       .split(/\r?\n/)
       .map((x) => x.trim())
       .filter(Boolean)
       .join(' ');
   }
-  static urlEncode(text: string) {
-    return encodeURIComponent(text);
+  static tabsToSpaces(t: string) {
+    return t.replace(/\t/g, '    ');
   }
-  static urlDecode(text: string) {
+  static spacesToTabs(t: string) {
+    return t.replace(/^ {4}/gm, '\t');
+  }
+  static urlEncode(t: string) {
+    return encodeURIComponent(t);
+  }
+  static urlDecode(t: string) {
     try {
-      return decodeURIComponent(text);
+      return decodeURIComponent(t);
     } catch {
-      return text;
+      return t;
     }
   }
-  static base64Encode(text: string) {
+  static base64Encode(t: string) {
     try {
-      const b = new TextEncoder().encode(text);
+      const b = new TextEncoder().encode(t);
       let s = '';
       b.forEach((x) => (s += String.fromCharCode(x)));
       return btoa(s);
     } catch {
-      return text;
+      return t;
     }
   }
-  static base64Decode(text: string) {
+  static base64Decode(t: string) {
     try {
-      const s = atob(text.trim());
+      const s = atob(t.trim());
       return new TextDecoder().decode(Uint8Array.from(s, (c) => c.charCodeAt(0)));
     } catch {
-      return text;
+      return t;
     }
   }
-  static htmlEncode(text: string) {
-    return text
+  static htmlEncode(t: string) {
+    return t
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&#039;');
   }
-  static htmlDecode(text: string) {
+  static htmlDecode(t: string) {
     const e = document.createElement('textarea');
-    e.innerHTML = text;
+    e.innerHTML = t;
     return e.value;
   }
-  static jsonPretty(text: string) {
+  static rot13(t: string) {
+    return t.replace(/[a-z]/gi, (c) =>
+      String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13)),
+    );
+  }
+  static textToBinary(t: string) {
+    return [...new TextEncoder().encode(t)].map((x) => x.toString(2).padStart(8, '0')).join(' ');
+  }
+  static binaryToText(t: string) {
     try {
-      return JSON.stringify(JSON.parse(text), null, 2);
+      return new TextDecoder().decode(
+        Uint8Array.from(
+          t
+            .trim()
+            .split(/\s+/)
+            .map((x) => parseInt(x, 2)),
+        ),
+      );
     } catch {
-      return text;
+      return t;
     }
   }
-  static jsonMinify(text: string) {
+  static textToHex(t: string) {
+    return [...new TextEncoder().encode(t)].map((x) => x.toString(16).padStart(2, '0')).join(' ');
+  }
+  static hexToText(t: string) {
     try {
-      return JSON.stringify(JSON.parse(text));
+      return new TextDecoder().decode(
+        Uint8Array.from(
+          t
+            .trim()
+            .replace(/0x/g, '')
+            .split(/\s+/)
+            .map((x) => parseInt(x, 16)),
+        ),
+      );
     } catch {
-      return text;
+      return t;
     }
   }
-  static jsonValidate(text: string) {
+  static jsonPretty(t: string) {
     try {
-      JSON.parse(text);
+      return JSON.stringify(JSON.parse(t), null, 2);
+    } catch {
+      return t;
+    }
+  }
+  static jsonMinify(t: string) {
+    try {
+      return JSON.stringify(JSON.parse(t));
+    } catch {
+      return t;
+    }
+  }
+  static jsonValidate(t: string) {
+    try {
+      JSON.parse(t);
       return 'Valid JSON';
     } catch (e) {
       return `Invalid JSON\n${e instanceof Error ? e.message : 'Unknown JSON error'}`;
     }
   }
-  static csvToJson(text: string) {
+  static csvToJson(t: string) {
     try {
-      const l = text.trim().split(/\r?\n/);
-      if (l.length < 2) return text;
+      const l = t.trim().split(/\r?\n/);
+      if (l.length < 2) return t;
       const h = this.csvRow(l[0]);
       return JSON.stringify(
         l.slice(1).map((r) => {
@@ -213,95 +279,51 @@ export class TextEngine {
         2,
       );
     } catch {
-      return text;
+      return t;
     }
   }
-  static jsonToCsv(text: string) {
+  static jsonToCsv(t: string) {
     try {
-      const data = JSON.parse(text);
-      if (!Array.isArray(data) || !data.length) return text;
-      const h = [...new Set(data.flatMap((x: Record<string, unknown>) => Object.keys(x)))];
+      const d = JSON.parse(t);
+      if (!Array.isArray(d) || !d.length) return t;
+      const h = [...new Set(d.flatMap((x: Record<string, unknown>) => Object.keys(x)))];
       const esc = (v: unknown) => {
         const s = String(v ?? '');
         return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
       };
       return [
         h.join(','),
-        ...data.map((x: Record<string, unknown>) => h.map((k) => esc(x[k])).join(',')),
+        ...d.map((x: Record<string, unknown>) => h.map((k) => esc(x[k])).join(',')),
       ].join('\n');
     } catch {
-      return text;
+      return t;
     }
   }
-  static rot13(text: string) {
-    return text.replace(/[a-z]/gi, (c) =>
-      String.fromCharCode(c.charCodeAt(0) + (c.toLowerCase() < 'n' ? 13 : -13)),
-    );
+  static escapeJs(t: string) {
+    return JSON.stringify(t).slice(1, -1);
   }
-  static textToBinary(text: string) {
-    return [...new TextEncoder().encode(text)].map((x) => x.toString(2).padStart(8, '0')).join(' ');
-  }
-  static binaryToText(text: string) {
+  static unescapeJs(t: string) {
     try {
-      return new TextDecoder().decode(
-        Uint8Array.from(
-          text
-            .trim()
-            .split(/\s+/)
-            .map((x) => parseInt(x, 2)),
-        ),
-      );
+      return JSON.parse(`"${t.replace(/"/g, '\\"')}"`);
     } catch {
-      return text;
+      return t;
     }
   }
-  static textToHex(text: string) {
-    return [...new TextEncoder().encode(text)]
-      .map((x) => x.toString(16).padStart(2, '0'))
-      .join(' ');
+  static extractEmails(t: string) {
+    return [...new Set(t.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [])].join('\n');
   }
-  static hexToText(text: string) {
-    try {
-      return new TextDecoder().decode(
-        Uint8Array.from(
-          text
-            .trim()
-            .replace(/0x/g, '')
-            .split(/\s+/)
-            .map((x) => parseInt(x, 16)),
-        ),
-      );
-    } catch {
-      return text;
-    }
+  static extractUrls(t: string) {
+    return [...new Set(t.match(/https?:\/\/[^\s<>"']+/gi) ?? [])].join('\n');
   }
-  static tabsToSpaces(text: string) {
-    return text.replace(/\t/g, '    ');
+  static extractNumbers(t: string) {
+    return (t.match(/[-+]?\d*\.?\d+/g) ?? []).join('\n');
   }
-  static spacesToTabs(text: string) {
-    return text.replace(/^ {4}/gm, '\t');
+  static extractHashtags(t: string) {
+    return [...new Set(t.match(/#[\p{L}\p{N}_]+/gu) ?? [])].join('\n');
   }
-  static normalizeUnicode(text: string) {
-    return text.normalize('NFC');
-  }
-  static removeDiacritics(text: string) {
-    return text.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-  }
-  static extractEmails(text: string) {
-    return [...new Set(text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi) ?? [])].join('\n');
-  }
-  static extractUrls(text: string) {
-    return [...new Set(text.match(/https?:\/\/[^\s<>"']+/gi) ?? [])].join('\n');
-  }
-  static extractNumbers(text: string) {
-    return (text.match(/[-+]?\d*\.?\d+/g) ?? []).join('\n');
-  }
-  static extractHashtags(text: string) {
-    return [...new Set(text.match(/#[\p{L}\p{N}_]+/gu) ?? [])].join('\n');
-  }
-  static wordFrequency(text: string) {
+  static wordFrequency(t: string) {
     const m = new Map<string, number>();
-    this.words(text)
+    this.words(t)
       .map((x) => x.toLowerCase())
       .forEach((x) => m.set(x, (m.get(x) ?? 0) + 1));
     return [...m]
@@ -309,74 +331,59 @@ export class TextEngine {
       .map(([w, n]) => `${w}\t${n}`)
       .join('\n');
   }
-  static lineLength(text: string) {
-    return text
+  static lineLength(t: string) {
+    return t
       .split(/\r?\n/)
       .map((x, i) => `${i + 1}\t${x.length}\t${x}`)
       .join('\n');
   }
-  static removeHtml(text: string) {
-    const e = document.createElement('div');
-    e.innerHTML = text;
-    return e.textContent ?? '';
-  }
-  static escapeJs(text: string) {
-    return JSON.stringify(text).slice(1, -1);
-  }
-  static unescapeJs(text: string) {
-    try {
-      return JSON.parse(`"${text.replace(/"/g, '\\"')}"`);
-    } catch {
-      return text;
-    }
-  }
-  static randomString(length = 32) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-    const a = new Uint32Array(length);
+  static randomString(n = 32) {
+    const c = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789',
+      a = new Uint32Array(n);
     crypto.getRandomValues(a);
-    return [...a].map((x) => chars[x % chars.length]).join('');
+    return [...a].map((x) => c[x % c.length]).join('');
   }
   static uuid() {
     return crypto.randomUUID();
   }
-  static password(length = 20) {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=';
-    const a = new Uint32Array(length);
+  static password(n = 20) {
+    const c = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%^&*_-+=',
+      a = new Uint32Array(n);
     crypto.getRandomValues(a);
-    return [...a].map((x) => chars[x % chars.length]).join('');
+    return [...a].map((x) => c[x % c.length]).join('');
   }
   static passphrase() {
-    const words = [
-      'amber',
-      'atlas',
-      'breeze',
-      'cedar',
-      'comet',
-      'coral',
-      'ember',
-      'falcon',
-      'forest',
-      'galaxy',
-      'harbor',
-      'lunar',
-      'maple',
-      'meadow',
-      'nova',
-      'ocean',
-      'orbit',
-      'pixel',
-      'quartz',
-      'river',
-      'solar',
-      'storm',
-      'tiger',
-      'velvet',
-      'willow',
-      'zephyr',
-    ];
-    const a = new Uint32Array(5);
+    const w = [
+        'amber',
+        'atlas',
+        'breeze',
+        'cedar',
+        'comet',
+        'coral',
+        'ember',
+        'falcon',
+        'forest',
+        'galaxy',
+        'harbor',
+        'lunar',
+        'maple',
+        'meadow',
+        'nova',
+        'ocean',
+        'orbit',
+        'pixel',
+        'quartz',
+        'river',
+        'solar',
+        'storm',
+        'tiger',
+        'velvet',
+        'willow',
+        'zephyr',
+      ],
+      a = new Uint32Array(5);
     crypto.getRandomValues(a);
-    return [...a].map((x) => words[x % words.length]).join('-');
+    return [...a].map((x) => w[x % w.length]).join('-');
   }
   static lorem() {
     return 'Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.';
@@ -384,32 +391,31 @@ export class TextEngine {
   static timestamp() {
     return `${Date.now()}\n${Math.floor(Date.now() / 1000)}\n${new Date().toISOString()}`;
   }
-  static cap(x: string) {
-    return x ? x[0].toUpperCase() + x.slice(1).toLowerCase() : x;
+  static cap(t: string) {
+    return t ? t[0].toUpperCase() + t.slice(1).toLowerCase() : t;
   }
-  static words(text: string) {
-    return text
+  static words(t: string) {
+    return t
       .trim()
       .split(/[^\p{L}\p{N}]+/u)
       .filter(Boolean);
   }
-  static csvRow(row: string) {
-    const out: string[] = [];
-    let cur = '',
+  static csvRow(r: string) {
+    const o: string[] = [];
+    let c = '',
       q = false;
-    for (let i = 0; i < row.length; i++) {
-      const c = row[i];
-      if (c === '"' && q && row[i + 1] === '"') {
-        cur += '"';
+    for (let i = 0; i < r.length; i++) {
+      const x = r[i];
+      if (x === '"' && q && r[i + 1] === '"') {
+        c += '"';
         i++;
-      } else if (c === '"') {
-        q = !q;
-      } else if (c === ',' && !q) {
-        out.push(cur);
-        cur = '';
-      } else cur += c;
+      } else if (x === '"') q = !q;
+      else if (x === ',' && !q) {
+        o.push(c);
+        c = '';
+      } else c += x;
     }
-    out.push(cur);
-    return out;
+    o.push(c);
+    return o;
   }
 }
