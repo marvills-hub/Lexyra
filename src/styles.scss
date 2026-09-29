@@ -1,1 +1,49 @@
-/* You can add global styles to this file, and also import other style files */
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+:root {
+  --bg: #f5f5f8;
+  --sidebar: #ffffff;
+  --top: #ffffff;
+  --surface: #ffffff;
+  --surface2: #f7f7fa;
+  --input: #f8f8fb;
+  --hover: #f2f0f8;
+  --border: #e5e4eb;
+  --text: #1c1b22;
+  --muted: #777583;
+  --muted2: #aaa8b3;
+  font-family: Inter, Arial, sans-serif;
+}
+:root[data-theme='dark'] {
+  --bg: #0d0d10;
+  --sidebar: #111115;
+  --top: #101014;
+  --surface: #131318;
+  --surface2: #18181e;
+  --input: #17171c;
+  --hover: #1d1c24;
+  --border: #29282f;
+  --text: #efedf5;
+  --muted: #8b8995;
+  --muted2: #5f5d68;
+  color-scheme: dark;
+}
+html,
+body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+}
+body {
+  overflow: hidden;
+}
+::selection {
+  background: #7952e955;
+}
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-thumb {
+  background: #34323d;
+  border-radius: 20px;
+}
