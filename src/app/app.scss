@@ -135,30 +135,29 @@ button {
   background: #4ddd9e;
 }
 .tool-ribbon {
-  min-height: 66px;
-  max-height: 174px;
+  min-height: 54px;
   display: grid;
-  grid-template-columns: 108px minmax(0, 1fr) 184px;
+  grid-template-columns: 106px minmax(0, 1fr) 184px;
   align-items: start;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 5px;
+  padding: 5px 8px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
   position: relative;
   z-index: 5;
 }
 .ribbon-category {
-  min-height: 46px;
+  min-height: 36px;
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 7px 10px 7px 5px;
+  gap: 7px;
+  padding: 5px 7px 4px 4px;
   border-right: 1px solid var(--border);
   color: var(--muted);
 }
 .ribbon-category > i {
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   margin-top: 1px;
   color: var(--purple);
   stroke-width: 1.8;
@@ -169,15 +168,15 @@ button {
   flex-direction: column;
 }
 .ribbon-category strong {
+  color: var(--text);
   font-size: 9px;
   line-height: 1.2;
-  color: var(--text);
   white-space: nowrap;
 }
 .ribbon-category span {
-  margin-top: 4px;
-  font-size: 7px;
+  margin-top: 3px;
   color: var(--muted2);
+  font-size: 7px;
 }
 .ribbon-tools {
   min-width: 0;
@@ -185,44 +184,61 @@ button {
   flex-wrap: wrap;
   align-content: flex-start;
   align-items: flex-start;
-  gap: 4px;
-  overflow-x: hidden;
-  overflow-y: auto;
-  max-height: 158px;
-  padding: 0 2px 0 0;
+  gap: 1px;
+  overflow: visible;
+  padding: 0;
 }
 .ribbon-tool {
-  width: 42px;
-  height: 42px;
-  flex: 0 0 42px;
+  width: 35px;
+  height: 35px;
+  flex: 0 0 35px;
   display: grid;
   place-items: center;
   padding: 0;
   border: 1px solid transparent;
-  border-radius: 7px;
+  border-radius: 5px;
   background: transparent;
   color: var(--muted);
   position: relative;
 }
 .ribbon-tool > i {
-  width: 23px;
-  height: 23px;
-  color: var(--purple);
-  stroke-width: 1.7;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+  stroke-width: 1.75;
 }
 .ribbon-tool:hover {
+  z-index: 30;
   border-color: var(--border);
   background: var(--hover);
 }
 .ribbon-tool:hover > i {
-  color: var(--text);
+  color: var(--purple);
+}
+.ribbon-tool.active {
+  border-color: #8057f35c;
+  background: var(--active);
+}
+.ribbon-tool.active > i {
+  color: var(--purple);
+}
+.ribbon-tool.active::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: 1px;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--purple);
+  transform: translateX(-50%);
 }
 .ribbon-tool::after {
   content: attr(data-tooltip);
   position: absolute;
-  top: calc(100% + 7px);
+  top: calc(100% + 5px);
   left: 50%;
-  z-index: 1000;
+  z-index: 2000;
   width: max-content;
   max-width: 260px;
   padding: 7px 9px;
@@ -232,7 +248,6 @@ button {
   color: #f3f1f7;
   box-shadow: 0 10px 28px #0009;
   font-size: 8px;
-  font-weight: 500;
   line-height: 1.45;
   white-space: normal;
   pointer-events: none;
@@ -240,9 +255,9 @@ button {
   visibility: hidden;
   transform: translate(-50%, 2px);
   transition:
-    opacity 0.12s ease,
-    visibility 0.12s ease,
-    transform 0.12s ease;
+    opacity 0.1s ease,
+    visibility 0.1s ease,
+    transform 0.1s ease;
 }
 .ribbon-tool:hover::after {
   opacity: 1;
@@ -251,20 +266,20 @@ button {
 }
 .ribbon-search {
   width: 100%;
-  height: 34px;
+  height: 31px;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 8px;
-  margin-top: 4px;
+  gap: 6px;
+  padding: 0 7px;
+  margin-top: 2px;
   border: 1px solid var(--border);
-  border-radius: 7px;
+  border-radius: 6px;
   background: var(--input);
   color: var(--muted);
 }
 .ribbon-search > i {
-  width: 15px;
-  height: 15px;
+  width: 14px;
+  height: 14px;
 }
 .ribbon-search input {
   width: 100%;
@@ -273,7 +288,7 @@ button {
   outline: 0;
   background: transparent;
   color: var(--text);
-  font-size: 9px;
+  font-size: 8px;
 }
 .ribbon-search input::placeholder {
   color: var(--muted2);

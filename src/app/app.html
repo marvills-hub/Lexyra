@@ -44,10 +44,16 @@
       @for (tool of visibleTools(); track tool.id) {
         <button
           class="ribbon-tool"
+          [class.active]="activeTypingTool() === tool.id"
           type="button"
           (click)="run(tool.id)"
           [attr.aria-label]="tool.name"
-          [attr.data-tooltip]="tool.name + ' — ' + tool.description"
+          [attr.data-tooltip]="
+            tool.name +
+            ' — ' +
+            tool.description +
+            (activeTypingTool() === tool.id ? ' — ACTIVE FOR TYPING' : '')
+          "
         >
           <i [attr.data-lucide]="tool.icon"></i>
         </button>
@@ -97,6 +103,19 @@
               ><small>{{ saved() ? 'Saved locally' : 'Saving...' }}</small>
             </div>
           </div>
+          @if (activeTypingTool()) {
+            <div class="typing-mode">
+              <span>ACTIVE</span>
+              <strong>{{ tools.find((t) => t.id === activeTypingTool())?.name }}</strong>
+              <button
+                type="button"
+                (click)="activeTypingTool.set(null)"
+                title="Disable active typing tool"
+              >
+                <i data-lucide="x"></i>
+              </button>
+            </div>
+          }
           <div class="document-actions">
             <input
               #fileInput

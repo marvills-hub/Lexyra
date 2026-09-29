@@ -31,6 +31,7 @@ export class App implements AfterViewChecked {
   result = signal('');
   resultTitle = signal('');
   resultOpen = signal(false);
+  activeTypingTool = signal<string | null>(null);
   dark = signal(localStorage.getItem('lexyra.theme') !== 'light');
   copied = signal(false);
   resultCopied = signal(false);
@@ -69,13 +70,42 @@ export class App implements AfterViewChecked {
       e.preventDefault();
       document.getElementById('toolSearch')?.focus();
     }
-    if (e.key === 'Escape') this.resultOpen.set(false);
+    if (e.key === 'Escape') {
+      this.resultOpen.set(false);
+      this.activeTypingTool.set(null);
+    }
   }
   selectCategory(id: ToolCategoryItem['id']) {
     this.category.set(id);
     this.search.set('');
   }
   update(v: string) {
+    const active = this.activeTypingTool();
+    if (active) {
+      const old = this.workspace.text();
+      if (v.length > old.length) {
+        let prefix = 0;
+        while (prefix < old.length && prefix < v.length && old[prefix] === v[prefix]) prefix++;
+        let suffix = 0;
+        while (
+          suffix < old.length - prefix &&
+          suffix < v.length - prefix &&
+          old[old.length - 1 - suffix] === v[v.length - 1 - suffix]
+        )
+          suffix++;
+        const inserted = v.slice(prefix, v.length - suffix);
+        const transformed = this.applyTransform(active, inserted);
+        if (transformed !== null) {
+          v = v.slice(0, prefix) + transformed + v.slice(v.length - suffix);
+          const nextCaret = prefix + transformed.length;
+          setTimeout(() => {
+            const editor = this.editor?.nativeElement;
+            editor?.focus();
+            editor?.setSelectionRange(nextCaret, nextCaret);
+          });
+        }
+      }
+    }
     this.saved.set(false);
     this.workspace.set(v, false);
     setTimeout(() => this.saved.set(true), 250);
@@ -92,11 +122,7 @@ export class App implements AfterViewChecked {
       };
     return { text: t, start: 0, end: t.length, selected: false };
   }
-  async run(id: string) {
-    const tool = this.tools.find((t) => t.id === id);
-    if (!tool) return;
-    const src = this.source();
-    let output = src.text;
+  applyTransform(id: string, value: string): string | null {
     const ops: Record<string, (x: string) => string> = {
       upper: TextEngine.upper,
       lower: TextEngine.lower,
@@ -142,48 +168,78 @@ export class App implements AfterViewChecked {
       hexText: TextEngine.hexToText,
       jsonPretty: TextEngine.jsonPretty,
       jsonMinify: TextEngine.jsonMinify,
-      jsonValidate: TextEngine.jsonValidate,
       csvJson: TextEngine.csvToJson.bind(TextEngine),
       jsonCsv: TextEngine.jsonToCsv.bind(TextEngine),
       escapeJs: TextEngine.escapeJs,
       unescapeJs: TextEngine.unescapeJs,
-      emails: TextEngine.extractEmails,
-      urls: TextEngine.extractUrls,
-      numbersOnly: TextEngine.extractNumbers,
-      hashtags: TextEngine.extractHashtags,
-      frequency: TextEngine.wordFrequency.bind(TextEngine),
-      lineLength: TextEngine.lineLength,
-      password: () => TextEngine.password(),
-      passphrase: () => TextEngine.passphrase(),
-      uuid: () => TextEngine.uuid(),
-      random: () => TextEngine.randomString(),
-      lorem: () => TextEngine.lorem(),
-      timestamp: () => TextEngine.timestamp(),
     };
+    const fn = ops[id];
+    return fn ? fn(value) : null;
+  }
+
+  async run(id: string) {
+    const tool = this.tools.find((t) => t.id === id);
+    if (!tool) return;
+
+    const src = this.source();
+
+    if (tool.behavior === 'transform' && !src.selected) {
+      this.activeTypingTool.update((current) => (current === id ? null : id));
+      setTimeout(() => this.editor?.nativeElement.focus());
+      return;
+    }
+
+    let output = src.text;
+
     if (id === 'sha256') {
       const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src.text));
       output = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
-    } else {
-      const fn = ops[id];
+    } else if (tool.behavior === 'result') {
+      const resultOps: Record<string, (x: string) => string> = {
+        jsonValidate: TextEngine.jsonValidate,
+        emails: TextEngine.extractEmails,
+        urls: TextEngine.extractUrls,
+        numbersOnly: TextEngine.extractNumbers,
+        hashtags: TextEngine.extractHashtags,
+        frequency: TextEngine.wordFrequency.bind(TextEngine),
+        lineLength: TextEngine.lineLength,
+        password: () => TextEngine.password(),
+        passphrase: () => TextEngine.passphrase(),
+        uuid: () => TextEngine.uuid(),
+        random: () => TextEngine.randomString(),
+        lorem: () => TextEngine.lorem(),
+        timestamp: () => TextEngine.timestamp(),
+      };
+      const fn = resultOps[id];
       if (!fn) return;
       output = fn(src.text);
+    } else {
+      const transformed = this.applyTransform(id, src.text);
+      if (transformed === null) return;
+      output = transformed;
     }
+
     if (tool.behavior === 'result') {
       this.resultTitle.set(tool.name);
       this.result.set(output);
       this.resultOpen.set(true);
       return;
     }
+
     const current = this.workspace.text();
+
     if (src.selected) {
       this.workspace.set(current.slice(0, src.start) + output + current.slice(src.end));
+      this.activeTypingTool.set(null);
+
       setTimeout(() => {
-        const e = this.editor?.nativeElement;
-        e?.focus();
-        e?.setSelectionRange(src.start, src.start + output.length);
+        const editor = this.editor?.nativeElement;
+        editor?.focus();
+        editor?.setSelectionRange(src.start, src.start + output.length);
       });
-    } else this.workspace.set(output);
+    }
   }
+
   replace() {
     if (this.findText)
       this.workspace.set(this.workspace.text().split(this.findText).join(this.replaceText));
