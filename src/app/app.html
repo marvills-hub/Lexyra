@@ -56,6 +56,24 @@
           "
         >
           <i [attr.data-lucide]="tool.icon"></i>
+          <span
+            class="tool-favorite"
+            [class.on]="isFavorite(tool.id)"
+            (click)="toggleFavorite(tool.id, $event)"
+            [title]="isFavorite(tool.id) ? 'Remove favorite' : 'Add favorite'"
+          >
+            <i [attr.data-lucide]="isFavorite(tool.id) ? 'star' : 'star'"></i>
+          </span>
+          @if (hasOptions(tool.id)) {
+            <span
+              class="tool-config"
+              [class.on]="activeOptionTool() === tool.id"
+              (click)="openOptions(tool.id, $event)"
+              title="Tool options"
+            >
+              <i data-lucide="sliders-horizontal"></i>
+            </span>
+          }
         </button>
       }
     </div>
@@ -71,6 +89,145 @@
       <kbd>Ctrl K</kbd>
     </div>
   </section>
+  @if (activeOptionTool()) {
+    <section class="tool-options">
+      <div class="tool-options-title">
+        <i data-lucide="sliders-horizontal"></i>
+        <div>
+          <strong>{{ tools.find((t) => t.id === activeOptionTool())?.name }}</strong>
+          <span>Tool Options</span>
+        </div>
+      </div>
+
+      @if (
+        activeOptionTool() === 'password' ||
+        activeOptionTool() === 'random' ||
+        activeOptionTool() === 'randomAlpha' ||
+        activeOptionTool() === 'randomNumeric'
+      ) {
+        <label>
+          <span>Length</span>
+          <input
+            type="number"
+            min="1"
+            max="4096"
+            [(ngModel)]="options.length"
+            (ngModelChange)="saveOptions()"
+          />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'password') {
+        <label class="check-option">
+          <input
+            type="checkbox"
+            [(ngModel)]="options.includeUpper"
+            (ngModelChange)="saveOptions()"
+          />
+          <span>A-Z</span>
+        </label>
+        <label class="check-option">
+          <input
+            type="checkbox"
+            [(ngModel)]="options.includeLower"
+            (ngModelChange)="saveOptions()"
+          />
+          <span>a-z</span>
+        </label>
+        <label class="check-option">
+          <input
+            type="checkbox"
+            [(ngModel)]="options.includeNumbers"
+            (ngModelChange)="saveOptions()"
+          />
+          <span>0-9</span>
+        </label>
+        <label class="check-option">
+          <input
+            type="checkbox"
+            [(ngModel)]="options.includeSymbols"
+            (ngModelChange)="saveOptions()"
+          />
+          <span>Symbols</span>
+        </label>
+      }
+
+      @if (activeOptionTool() === 'lorem' || activeOptionTool() === 'loremParagraphs') {
+        <label>
+          <span>Paragraphs</span>
+          <input
+            type="number"
+            min="1"
+            max="100"
+            [(ngModel)]="options.amount"
+            (ngModelChange)="saveOptions()"
+          />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'indent2' || activeOptionTool() === 'indent4') {
+        <label>
+          <span>Spaces</span>
+          <input
+            type="number"
+            min="0"
+            max="16"
+            [(ngModel)]="options.indent"
+            (ngModelChange)="saveOptions()"
+          />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'prefixLines') {
+        <label class="wide-option">
+          <span>Prefix</span>
+          <input [(ngModel)]="options.prefix" (ngModelChange)="saveOptions()" />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'suffixComma') {
+        <label class="wide-option">
+          <span>Suffix</span>
+          <input [(ngModel)]="options.suffix" (ngModelChange)="saveOptions()" />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'number') {
+        <label>
+          <span>Start</span>
+          <input type="number" [(ngModel)]="options.start" (ngModelChange)="saveOptions()" />
+        </label>
+      }
+
+      @if (activeOptionTool() === 'jsonPretty') {
+        <label>
+          <span>Indent</span>
+          <input
+            type="number"
+            min="1"
+            max="10"
+            [(ngModel)]="options.jsonIndent"
+            (ngModelChange)="saveOptions()"
+          />
+        </label>
+      }
+
+      <button class="run-option-tool" type="button" (click)="run(activeOptionTool()!)">
+        <i data-lucide="play"></i>
+        Run
+      </button>
+
+      <button
+        class="close-options"
+        type="button"
+        (click)="activeOptionTool.set(null)"
+        title="Close options"
+      >
+        <i data-lucide="x"></i>
+      </button>
+    </section>
+  }
+
   <div class="work-area">
     <aside class="sidebar">
       <div class="sidebar-title">
@@ -87,6 +244,34 @@
           </button>
         }
       </nav>
+      @if (favoriteTools().length) {
+        <div class="mini-tools">
+          <div class="mini-tools-title"><i data-lucide="star"></i><span>FAVORITES</span></div>
+          <div class="mini-tools-list">
+            @for (tool of favoriteTools().slice(0, 5); track tool.id) {
+              <button (click)="run(tool.id)" [title]="tool.name">
+                <i [attr.data-lucide]="tool.icon"></i>
+                <span>{{ tool.name }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
+      @if (recentToolItems().length) {
+        <div class="mini-tools recent-tools">
+          <div class="mini-tools-title"><i data-lucide="history"></i><span>RECENT</span></div>
+          <div class="mini-tools-list">
+            @for (tool of recentToolItems().slice(0, 4); track tool.id) {
+              <button (click)="run(tool.id)" [title]="tool.name">
+                <i [attr.data-lucide]="tool.icon"></i>
+                <span>{{ tool.name }}</span>
+              </button>
+            }
+          </div>
+        </div>
+      }
+
       <div class="sidebar-spacer"></div>
       <button class="sidebar-ai">
         <i data-lucide="sparkles"></i><span><strong>Lexyra AI</strong><small>Optional</small></span>

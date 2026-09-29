@@ -801,3 +801,223 @@ button {
     display: none;
   }
 }
+
+/* Build 4 professional tool workflow */
+.ribbon-tool .tool-favorite,
+.ribbon-tool .tool-config {
+  position: absolute;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  opacity: 0;
+  color: var(--muted2);
+  transition:
+    opacity 0.1s ease,
+    color 0.1s ease;
+}
+.ribbon-tool .tool-favorite {
+  top: 1px;
+  right: 1px;
+}
+.ribbon-tool .tool-config {
+  bottom: 1px;
+  right: 1px;
+}
+.ribbon-tool .tool-favorite i,
+.ribbon-tool .tool-config i {
+  width: 8px;
+  height: 8px;
+}
+.ribbon-tool:hover .tool-favorite,
+.ribbon-tool:hover .tool-config,
+.ribbon-tool .tool-favorite.on,
+.ribbon-tool .tool-config.on {
+  opacity: 1;
+}
+.ribbon-tool .tool-favorite.on {
+  color: #e8bb55;
+}
+.ribbon-tool .tool-favorite.on i {
+  fill: currentColor;
+}
+.ribbon-tool .tool-config.on {
+  color: var(--purple);
+}
+.tool-options {
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 9px;
+  border-bottom: 1px solid var(--border);
+  background: var(--chrome);
+  position: relative;
+  z-index: 4;
+}
+.tool-options-title {
+  min-width: 130px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding-right: 10px;
+  border-right: 1px solid var(--border);
+}
+.tool-options-title > i {
+  width: 15px;
+  height: 15px;
+  color: var(--purple);
+}
+.tool-options-title > div {
+  display: flex;
+  flex-direction: column;
+}
+.tool-options-title strong {
+  font-size: 8px;
+}
+.tool-options-title span {
+  margin-top: 2px;
+  color: var(--muted2);
+  font-size: 6px;
+  text-transform: uppercase;
+  letter-spacing: 0.7px;
+}
+.tool-options > label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 7px;
+}
+.tool-options > label > span {
+  white-space: nowrap;
+}
+.tool-options input[type='number'],
+.tool-options input:not([type]) {
+  width: 62px;
+  height: 26px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  outline: 0;
+  background: var(--input);
+  color: var(--text);
+  padding: 0 6px;
+  font-size: 8px;
+}
+.tool-options .wide-option input {
+  width: 110px;
+}
+.tool-options input:focus {
+  border-color: var(--accent);
+}
+.tool-options .check-option {
+  height: 26px;
+  padding: 0 5px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--surface);
+}
+.tool-options .check-option input {
+  accent-color: var(--accent);
+}
+.run-option-tool {
+  height: 27px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 7px;
+}
+.run-option-tool i {
+  width: 11px;
+  height: 11px;
+}
+.close-options {
+  width: 27px;
+  height: 27px;
+  margin-left: auto;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  display: grid;
+  place-items: center;
+}
+.close-options:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+.mini-tools {
+  margin-top: 10px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+.mini-tools-title {
+  height: 22px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 8px;
+  color: var(--muted2);
+}
+.mini-tools-title i {
+  width: 10px;
+  height: 10px;
+}
+.mini-tools-title span {
+  font-size: 6px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.mini-tools-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.mini-tools-list button {
+  width: 100%;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 8px;
+  text-align: left;
+  font-size: 7px;
+}
+.mini-tools-list button i {
+  width: 11px;
+  height: 11px;
+}
+.mini-tools-list button:hover {
+  background: var(--hover);
+  color: var(--purple);
+}
+@media (max-height: 720px) {
+  .recent-tools {
+    display: none;
+  }
+}
+@media (max-width: 950px) {
+  .mini-tools {
+    display: none;
+  }
+  .tool-options-title {
+    min-width: auto;
+  }
+  .tool-options-title > div {
+    display: none;
+  }
+}
+@media (max-width: 700px) {
+  .tool-options {
+    overflow-x: auto;
+  }
+}
