@@ -57,6 +57,16 @@ export class App implements AfterViewChecked {
   saved = signal(true);
   findText = '';
   replaceText = '';
+  searchRegex = this.readBool('lexyra.search.regex');
+  searchCase = this.readBool('lexyra.search.case');
+  searchWholeWord = this.readBool('lexyra.search.wholeWord');
+  searchIndex = signal(-1);
+  searchCount = signal(0);
+  searchError = signal('');
+  commandOpen = signal(false);
+  commandQuery = signal('');
+  commandIndex = signal(0);
+  gotoLineValue = 1;
   typingStart: number | null = null;
   typingRaw = '';
   options: ToolOptions = this.readOptions();
@@ -107,6 +117,82 @@ export class App implements AfterViewChecked {
       .filter((t): t is TextTool => !!t),
   );
 
+  editorCommands = [
+    { id: 'editor.selectAll', name: 'Select All', icon: 'scan-text', shortcut: 'Ctrl+A' },
+    {
+      id: 'editor.selectLine',
+      name: 'Select Current Line',
+      icon: 'text-select',
+      shortcut: 'Alt+L',
+    },
+    {
+      id: 'editor.duplicateLine',
+      name: 'Duplicate Line / Selection',
+      icon: 'copy-plus',
+      shortcut: 'Alt+Shift+D',
+    },
+    {
+      id: 'editor.deleteLine',
+      name: 'Delete Line / Selection',
+      icon: 'trash-2',
+      shortcut: 'Alt+Shift+K',
+    },
+    { id: 'editor.moveLineUp', name: 'Move Line Up', icon: 'arrow-up', shortcut: 'Alt+ArrowUp' },
+    {
+      id: 'editor.moveLineDown',
+      name: 'Move Line Down',
+      icon: 'arrow-down',
+      shortcut: 'Alt+ArrowDown',
+    },
+    { id: 'editor.indent', name: 'Indent Selection', icon: 'indent-increase', shortcut: 'Tab' },
+    {
+      id: 'editor.outdent',
+      name: 'Outdent Selection',
+      icon: 'indent-decrease',
+      shortcut: 'Shift+Tab',
+    },
+    { id: 'editor.find', name: 'Focus Find', icon: 'search', shortcut: 'Ctrl+F' },
+    { id: 'editor.gotoLine', name: 'Go to Line', icon: 'locate-fixed', shortcut: 'Ctrl+G' },
+  ];
+
+  commandItems = computed(() => {
+    const q = this.commandQuery().trim().toLowerCase();
+
+    const tools = this.tools.map((tool) => ({
+      id: `tool.${tool.id}`,
+      name: tool.name,
+      description: tool.description,
+      icon: tool.icon,
+      type: 'tool' as const,
+      favorite: this.favorites().includes(tool.id),
+      recent: this.recentTools().includes(tool.id),
+      shortcut: '',
+    }));
+
+    const commands = this.editorCommands.map((command) => ({
+      ...command,
+      description: 'Editor command',
+      type: 'command' as const,
+      favorite: false,
+      recent: false,
+    }));
+
+    let items = [...tools, ...commands];
+
+    if (q) {
+      items = items.filter((item) =>
+        `${item.name} ${item.description} ${item.shortcut}`.toLowerCase().includes(q),
+      );
+    }
+
+    return items
+      .sort((a, b) => {
+        if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+        if (a.recent !== b.recent) return a.recent ? -1 : 1;
+        return a.name.localeCompare(b.name);
+      })
+      .slice(0, 30);
+  });
   constructor(public workspace: TextWorkspaceService) {
     document.documentElement.dataset['theme'] = this.dark() ? 'dark' : 'light';
   }
@@ -168,11 +254,87 @@ export class App implements AfterViewChecked {
     }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      document.getElementById('toolSearch')?.focus();
+      this.openCommandPalette();
+      return;
+    }
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'f') {
+      e.preventDefault();
+      this.focusFind();
+      return;
+    }
+
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'g') {
+      e.preventDefault();
+      this.focusGotoLine();
+      return;
+    }
+
+    if (this.commandOpen()) {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        const max = Math.max(0, this.commandItems().length - 1);
+        this.commandIndex.update((i) => Math.min(max, i + 1));
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        this.commandIndex.update((i) => Math.max(0, i - 1));
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const item = this.commandItems()[this.commandIndex()];
+        if (item) this.executeCommandItem(item.id);
+        return;
+      }
+    }
+
+    const editorFocused = document.activeElement === this.editor?.nativeElement;
+
+    if (editorFocused && e.key === 'Tab') {
+      e.preventDefault();
+      if (e.shiftKey) this.outdentSelection();
+      else this.indentSelection();
+      return;
+    }
+
+    if (editorFocused && e.altKey && e.shiftKey && e.key.toLowerCase() === 'd') {
+      e.preventDefault();
+      this.duplicateLineOrSelection();
+      return;
+    }
+
+    if (editorFocused && e.altKey && e.shiftKey && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      this.deleteLineOrSelection();
+      return;
+    }
+
+    if (editorFocused && e.altKey && e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.moveLine(-1);
+      return;
+    }
+
+    if (editorFocused && e.altKey && e.key === 'ArrowDown') {
+      e.preventDefault();
+      this.moveLine(1);
+      return;
+    }
+
+    if (editorFocused && e.altKey && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      this.selectCurrentLine();
+      return;
     }
     if (e.key === 'Escape') {
       this.resultOpen.set(false);
       this.activeOptionTool.set(null);
+      this.commandOpen.set(false);
+      this.commandQuery.set('');
+      this.commandIndex.set(0);
       this.disableTypingTool();
     }
   }
@@ -421,12 +583,483 @@ export class App implements AfterViewChecked {
         e?.focus();
         e?.setSelectionRange(src.start, src.start + output!.length);
       });
+
+      return;
+    }
+
+    this.activeTypingTool.set(id);
+    this.typingStart = src.start;
+    this.typingRaw = '';
+    this.resultOpen.set(false);
+
+    setTimeout(() => {
+      const e = this.editor?.nativeElement;
+      e?.focus();
+      e?.setSelectionRange(src.start, src.start);
+    });
+  }
+  readBool(key: string) {
+    return localStorage.getItem(key) === 'true';
+  }
+  saveSearchOptions() {
+    localStorage.setItem('lexyra.search.regex', String(this.searchRegex));
+    localStorage.setItem('lexyra.search.case', String(this.searchCase));
+    localStorage.setItem('lexyra.search.wholeWord', String(this.searchWholeWord));
+    this.refreshSearch();
+  }
+  escapeRegexText(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+  buildSearchRegex(global = true) {
+    if (!this.findText) return null;
+
+    try {
+      let source = this.searchRegex ? this.findText : this.escapeRegexText(this.findText);
+
+      if (this.searchWholeWord) source = `\\b(?:${source})\\b`;
+
+      return new RegExp(source, `${global ? 'g' : ''}${this.searchCase ? '' : 'i'}u`);
+    } catch (error) {
+      this.searchError.set(error instanceof Error ? error.message : 'Invalid regular expression');
+      return null;
     }
   }
 
+  findMatches() {
+    const text = this.workspace.text();
+    const regex = this.buildSearchRegex(true);
+
+    this.searchError.set('');
+
+    if (!regex || !this.findText) {
+      this.searchCount.set(0);
+      this.searchIndex.set(-1);
+      return [] as { start: number; end: number; text: string }[];
+    }
+
+    const matches: { start: number; end: number; text: string }[] = [];
+    let match: RegExpExecArray | null;
+
+    while ((match = regex.exec(text))) {
+      matches.push({
+        start: match.index,
+        end: match.index + match[0].length,
+        text: match[0],
+      });
+
+      if (!match[0].length) regex.lastIndex++;
+      if (matches.length >= 10000) break;
+    }
+
+    this.searchCount.set(matches.length);
+
+    if (!matches.length) this.searchIndex.set(-1);
+
+    return matches;
+  }
+
+  refreshSearch(selectCurrent = false) {
+    const matches = this.findMatches();
+
+    if (!matches.length) return;
+
+    let index = this.searchIndex();
+
+    if (index < 0 || index >= matches.length) {
+      index = 0;
+      this.searchIndex.set(0);
+    }
+
+    if (selectCurrent) this.selectSearchMatch(matches[index]);
+  }
+
+  findNext() {
+    const matches = this.findMatches();
+
+    if (!matches.length) return;
+
+    const e = this.editor?.nativeElement;
+    const caret = e?.selectionEnd ?? 0;
+    let index = matches.findIndex((match) => match.start >= caret);
+
+    if (index < 0) index = 0;
+
+    this.searchIndex.set(index);
+    this.selectSearchMatch(matches[index]);
+  }
+
+  findPrevious() {
+    const matches = this.findMatches();
+
+    if (!matches.length) return;
+
+    const e = this.editor?.nativeElement;
+    const caret = e?.selectionStart ?? this.workspace.text().length;
+    let index = -1;
+
+    for (let i = matches.length - 1; i >= 0; i--) {
+      if (matches[i].end <= caret) {
+        index = i;
+        break;
+      }
+    }
+
+    if (index < 0) index = matches.length - 1;
+
+    this.searchIndex.set(index);
+    this.selectSearchMatch(matches[index]);
+  }
+
+  selectSearchMatch(match: { start: number; end: number }) {
+    setTimeout(() => {
+      const e = this.editor?.nativeElement;
+      if (!e) return;
+
+      e.focus();
+      e.setSelectionRange(match.start, match.end);
+
+      const textBefore = this.workspace.text().slice(0, match.start);
+      const line = textBefore.split('\n').length;
+      const totalLines = Math.max(1, this.workspace.stats().lines);
+      e.scrollTop = ((line - 1) / totalLines) * Math.max(0, e.scrollHeight - e.clientHeight);
+    });
+  }
+
+  replaceCurrent() {
+    const matches = this.findMatches();
+
+    if (!matches.length) return;
+
+    let index = this.searchIndex();
+
+    if (index < 0 || index >= matches.length) index = 0;
+
+    const match = matches[index];
+    const text = this.workspace.text();
+
+    let replacement = this.replaceText;
+
+    if (this.searchRegex) {
+      const regex = this.buildSearchRegex(false);
+      if (regex) replacement = match.text.replace(regex, this.replaceText);
+    }
+
+    this.workspace.set(text.slice(0, match.start) + replacement + text.slice(match.end));
+    this.searchIndex.set(index);
+    this.refreshSearch(true);
+  }
+
   replace() {
-    if (this.findText)
-      this.workspace.set(this.workspace.text().split(this.findText).join(this.replaceText));
+    if (!this.findText) return;
+
+    const regex = this.buildSearchRegex(true);
+
+    if (!regex) return;
+
+    const current = this.workspace.text();
+    const next = current.replace(regex, this.replaceText);
+
+    if (next !== current) this.workspace.set(next);
+
+    this.searchIndex.set(-1);
+    this.refreshSearch(false);
+  }
+
+  focusFind() {
+    setTimeout(() => {
+      const input = document.getElementById('findInput') as HTMLInputElement | null;
+      input?.focus();
+      input?.select();
+      this.refreshSearch(false);
+    });
+  }
+
+  focusGotoLine() {
+    setTimeout(() => {
+      const input = document.getElementById('gotoLineInput') as HTMLInputElement | null;
+      input?.focus();
+      input?.select();
+    });
+  }
+
+  goToLine() {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    const text = this.workspace.text();
+    const lines = text.split('\n');
+    const line = Math.max(1, Math.min(lines.length, Number(this.gotoLineValue) || 1));
+    let start = 0;
+
+    for (let i = 0; i < line - 1; i++) start += lines[i].length + 1;
+
+    const end = start + lines[line - 1].length;
+
+    e.focus();
+    e.setSelectionRange(start, end);
+
+    const totalLines = Math.max(1, lines.length);
+    e.scrollTop = ((line - 1) / totalLines) * Math.max(0, e.scrollHeight - e.clientHeight);
+  }
+
+  selectedRangeOrLine() {
+    const e = this.editor?.nativeElement;
+    const text = this.workspace.text();
+
+    if (!e) return { start: 0, end: 0 };
+
+    if (e.selectionStart !== e.selectionEnd) {
+      return { start: e.selectionStart, end: e.selectionEnd };
+    }
+
+    const start = text.lastIndexOf('\n', Math.max(0, e.selectionStart - 1)) + 1;
+    const newline = text.indexOf('\n', e.selectionEnd);
+    const end = newline < 0 ? text.length : newline;
+
+    return { start, end };
+  }
+
+  selectCurrentLine() {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    const range = this.selectedRangeOrLine();
+    e.focus();
+    e.setSelectionRange(range.start, range.end);
+  }
+
+  selectAllEditor() {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    e.focus();
+    e.setSelectionRange(0, this.workspace.text().length);
+  }
+
+  duplicateLineOrSelection() {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    const text = this.workspace.text();
+
+    if (e.selectionStart !== e.selectionEnd) {
+      const start = e.selectionStart;
+      const end = e.selectionEnd;
+      const selected = text.slice(start, end);
+      this.workspace.set(text.slice(0, end) + selected + text.slice(end));
+
+      setTimeout(() => {
+        e.focus();
+        e.setSelectionRange(end, end + selected.length);
+      });
+      return;
+    }
+
+    const range = this.selectedRangeOrLine();
+    const line = text.slice(range.start, range.end);
+    const insertion = `${line}\n`;
+
+    this.workspace.set(text.slice(0, range.start) + insertion + text.slice(range.start));
+
+    setTimeout(() => {
+      const start = range.start + insertion.length;
+      e.focus();
+      e.setSelectionRange(start, start + line.length);
+    });
+  }
+
+  deleteLineOrSelection() {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    const text = this.workspace.text();
+
+    if (e.selectionStart !== e.selectionEnd) {
+      const start = e.selectionStart;
+      this.workspace.set(text.slice(0, start) + text.slice(e.selectionEnd));
+
+      setTimeout(() => {
+        e.focus();
+        e.setSelectionRange(start, start);
+      });
+      return;
+    }
+
+    const range = this.selectedRangeOrLine();
+    let start = range.start;
+    let end = range.end;
+
+    if (end < text.length && text[end] === '\n') end++;
+    else if (start > 0 && text[start - 1] === '\n') start--;
+
+    this.workspace.set(text.slice(0, start) + text.slice(end));
+
+    setTimeout(() => {
+      e.focus();
+      e.setSelectionRange(start, start);
+    });
+  }
+
+  selectedLineBlock() {
+    const e = this.editor?.nativeElement;
+    const text = this.workspace.text();
+
+    if (!e) return null;
+
+    const start = text.lastIndexOf('\n', Math.max(0, e.selectionStart - 1)) + 1;
+    const newline = text.indexOf('\n', e.selectionEnd);
+    const end = newline < 0 ? text.length : newline;
+
+    return { start, end, text: text.slice(start, end) };
+  }
+
+  indentSelection() {
+    const e = this.editor?.nativeElement;
+    const block = this.selectedLineBlock();
+
+    if (!e || !block) return;
+
+    const indent = ' '.repeat(Math.max(1, this.options.indent));
+    const changed = block.text
+      .split('\n')
+      .map((line) => indent + line)
+      .join('\n');
+
+    this.workspace.set(
+      this.workspace.text().slice(0, block.start) +
+        changed +
+        this.workspace.text().slice(block.end),
+    );
+
+    setTimeout(() => {
+      e.focus();
+      e.setSelectionRange(block.start, block.start + changed.length);
+    });
+  }
+
+  outdentSelection() {
+    const e = this.editor?.nativeElement;
+    const block = this.selectedLineBlock();
+
+    if (!e || !block) return;
+
+    const size = Math.max(1, this.options.indent);
+    const pattern = new RegExp(`^(?:\\t| {1,${size}})`);
+    const changed = block.text
+      .split('\n')
+      .map((line) => line.replace(pattern, ''))
+      .join('\n');
+
+    this.workspace.set(
+      this.workspace.text().slice(0, block.start) +
+        changed +
+        this.workspace.text().slice(block.end),
+    );
+
+    setTimeout(() => {
+      e.focus();
+      e.setSelectionRange(block.start, block.start + changed.length);
+    });
+  }
+
+  moveLine(direction: -1 | 1) {
+    const e = this.editor?.nativeElement;
+    if (!e) return;
+
+    const text = this.workspace.text();
+    const lines = text.split('\n');
+    const beforeStart = text.slice(0, e.selectionStart);
+    const beforeEnd = text.slice(0, e.selectionEnd);
+
+    let startLine = beforeStart.split('\n').length - 1;
+    let endLine = beforeEnd.split('\n').length - 1;
+
+    if (e.selectionEnd > e.selectionStart && text[e.selectionEnd - 1] === '\n') endLine--;
+
+    if (direction < 0 && startLine === 0) return;
+    if (direction > 0 && endLine >= lines.length - 1) return;
+
+    const selected = lines.splice(startLine, endLine - startLine + 1);
+
+    if (direction < 0) {
+      const previous = lines.splice(startLine - 1, 1);
+      lines.splice(startLine - 1, 0, ...selected, ...previous);
+      startLine--;
+    } else {
+      const next = lines.splice(startLine, 1);
+      lines.splice(startLine, 0, ...next, ...selected);
+      startLine++;
+    }
+
+    const nextText = lines.join('\n');
+    this.workspace.set(nextText);
+
+    let start = 0;
+    for (let i = 0; i < startLine; i++) start += lines[i].length + 1;
+
+    const length = selected.join('\n').length;
+
+    setTimeout(() => {
+      e.focus();
+      e.setSelectionRange(start, start + length);
+    });
+  }
+
+  openCommandPalette() {
+    this.commandOpen.set(true);
+    this.commandQuery.set('');
+    this.commandIndex.set(0);
+
+    setTimeout(() => document.getElementById('commandInput')?.focus());
+  }
+
+  commandQueryChanged(value: string) {
+    this.commandQuery.set(value);
+    this.commandIndex.set(0);
+  }
+
+  async executeCommandItem(id: string) {
+    this.commandOpen.set(false);
+    this.commandQuery.set('');
+    this.commandIndex.set(0);
+
+    if (id.startsWith('tool.')) {
+      await this.run(id.slice(5));
+      return;
+    }
+
+    switch (id) {
+      case 'editor.selectAll':
+        this.selectAllEditor();
+        break;
+      case 'editor.selectLine':
+        this.selectCurrentLine();
+        break;
+      case 'editor.duplicateLine':
+        this.duplicateLineOrSelection();
+        break;
+      case 'editor.deleteLine':
+        this.deleteLineOrSelection();
+        break;
+      case 'editor.moveLineUp':
+        this.moveLine(-1);
+        break;
+      case 'editor.moveLineDown':
+        this.moveLine(1);
+        break;
+      case 'editor.indent':
+        this.indentSelection();
+        break;
+      case 'editor.outdent':
+        this.outdentSelection();
+        break;
+      case 'editor.find':
+        this.focusFind();
+        break;
+      case 'editor.gotoLine':
+        this.focusGotoLine();
+        break;
+    }
   }
 
   insertResult() {

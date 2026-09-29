@@ -398,13 +398,92 @@
       </section>
 
       <section class="bottom-tools">
-        <div class="find-bar">
-          <div class="find-title"><i data-lucide="search"></i><span>Find & Replace</span></div>
-          <input [(ngModel)]="findText" placeholder="Find text" />
+        <div class="find-bar advanced-find">
+          <div class="find-title">
+            <i data-lucide="search"></i>
+            <span>Find & Replace</span>
+          </div>
+
+          <div class="find-input-wrap">
+            <input
+              id="findInput"
+              [(ngModel)]="findText"
+              (ngModelChange)="refreshSearch(false)"
+              (keydown.enter)="findNext()"
+              placeholder="Find text"
+            />
+
+            @if (findText) {
+              <span class="match-count">
+                @if (searchError()) {
+                  ERROR
+                } @else if (searchCount()) {
+                  {{ searchIndex() + 1 }}/{{ searchCount() }}
+                } @else {
+                  0/0
+                }
+              </span>
+            }
+          </div>
+
+          <button
+            class="find-toggle"
+            [class.active]="searchCase"
+            (click)="searchCase = !searchCase; saveSearchOptions()"
+            title="Match case"
+          >
+            Aa
+          </button>
+
+          <button
+            class="find-toggle"
+            [class.active]="searchWholeWord"
+            (click)="searchWholeWord = !searchWholeWord; saveSearchOptions()"
+            title="Whole word"
+          >
+            W
+          </button>
+
+          <button
+            class="find-toggle"
+            [class.active]="searchRegex"
+            (click)="searchRegex = !searchRegex; saveSearchOptions()"
+            title="Regular expression"
+          >
+            .*
+          </button>
+
+          <button class="find-nav" (click)="findPrevious()" title="Previous match">
+            <i data-lucide="chevron-up"></i>
+          </button>
+
+          <button class="find-nav" (click)="findNext()" title="Next match">
+            <i data-lucide="chevron-down"></i>
+          </button>
+
           <i class="arrow" data-lucide="arrow-right"></i>
+
           <input [(ngModel)]="replaceText" placeholder="Replace with" />
-          <button (click)="replace()">Replace all</button>
+
+          <button class="replace-current" (click)="replaceCurrent()">Replace</button>
+          <button class="replace-all" (click)="replace()">All</button>
+
+          <div class="goto-line">
+            <i data-lucide="locate-fixed"></i>
+            <input
+              id="gotoLineInput"
+              type="number"
+              min="1"
+              [(ngModel)]="gotoLineValue"
+              (keydown.enter)="goToLine()"
+              title="Go to line"
+            />
+            <button (click)="goToLine()" title="Go to line">
+              <i data-lucide="corner-down-left"></i>
+            </button>
+          </div>
         </div>
+
         <div class="quick-tools">
           <button (click)="run('upper')" title="Uppercase"><i data-lucide="case-upper"></i></button>
           <button (click)="run('title')" title="Title Case"><i data-lucide="type"></i></button>
@@ -423,4 +502,62 @@
     <span><span class="ready"></span>Lexyra ready</span>
     <span>{{ tools.length }} manual tools · Offline capable · Autosaved locally</span>
   </footer>
+
+  @if (commandOpen()) {
+    <div class="command-backdrop" (mousedown)="commandOpen.set(false)">
+      <section class="command-palette" (mousedown)="$event.stopPropagation()">
+        <div class="command-search">
+          <i data-lucide="search"></i>
+          <input
+            id="commandInput"
+            [ngModel]="commandQuery()"
+            (ngModelChange)="commandQueryChanged($event)"
+            placeholder="Search 138 tools and editor commands..."
+            autocomplete="off"
+          />
+          <kbd>ESC</kbd>
+        </div>
+
+        <div class="command-results">
+          @if (commandItems().length) {
+            @for (item of commandItems(); track item.id; let i = $index) {
+              <button
+                [class.active]="commandIndex() === i"
+                (mouseenter)="commandIndex.set(i)"
+                (click)="executeCommandItem(item.id)"
+              >
+                <span class="command-icon">
+                  <i [attr.data-lucide]="item.icon"></i>
+                </span>
+
+                <span class="command-info">
+                  <strong>{{ item.name }}</strong>
+                  <small>{{ item.description }}</small>
+                </span>
+
+                @if (item.favorite) {
+                  <i class="command-star" data-lucide="star"></i>
+                }
+
+                @if (item.shortcut) {
+                  <kbd>{{ item.shortcut }}</kbd>
+                }
+              </button>
+            }
+          } @else {
+            <div class="command-empty">
+              <i data-lucide="search-x"></i>
+              <span>No matching command</span>
+            </div>
+          }
+        </div>
+
+        <footer class="command-footer">
+          <span><kbd>↑</kbd><kbd>↓</kbd> Navigate</span>
+          <span><kbd>Enter</kbd> Run</span>
+          <span><kbd>Esc</kbd> Close</span>
+        </footer>
+      </section>
+    </div>
+  }
 </div>
