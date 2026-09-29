@@ -48,11 +48,10 @@
             type="button"
             [class.active]="openToolGroup() === group.id"
             (click)="toggleToolGroup(group.id, $event)"
-            [title]="group.name + ' · ' + group.tools.length + ' tools'"
+            [attr.aria-label]="group.name"
+            [attr.data-group-tooltip]="group.name"
           >
-            <i [attr.data-lucide]="group.icon"></i>
-            <span>{{ group.name }}</span>
-            <small>{{ group.tools.length }}</small>
+            <i class="group-main-icon" [attr.data-lucide]="group.icon"></i>
             <i class="group-chevron" data-lucide="chevron-down"></i>
           </button>
           @if (openToolGroup() === group.id) {
