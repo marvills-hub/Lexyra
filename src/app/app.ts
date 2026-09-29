@@ -26,7 +26,7 @@ export class App implements AfterViewChecked {
   @ViewChild('editor') editor?: ElementRef<HTMLTextAreaElement>;
   tools = TEXT_TOOLS;
   categories = TOOL_CATEGORIES;
-  category = signal<ToolCategoryItem['id']>('format');
+  category = signal<ToolCategoryItem['id']>('all');
   search = signal('');
   result = signal('');
   resultTitle = signal('');

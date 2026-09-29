@@ -16,7 +16,7 @@ button {
 .app-shell {
   height: 100vh;
   display: grid;
-  grid-template-rows: 48px 68px 1fr 26px;
+  grid-template-rows: 48px auto minmax(0, 1fr) 26px;
   background: var(--bg);
   color: var(--text);
   overflow: hidden;
@@ -135,112 +135,136 @@ button {
   background: #4ddd9e;
 }
 .tool-ribbon {
-  height: 68px;
+  min-height: 66px;
+  max-height: 174px;
+  display: grid;
+  grid-template-columns: 108px minmax(0, 1fr) 184px;
+  align-items: start;
+  gap: 8px;
+  padding: 8px 10px;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
-  display: flex;
-  align-items: stretch;
-  padding: 7px 10px;
-  gap: 8px;
-  overflow: hidden;
+  position: relative;
+  z-index: 5;
 }
-.ribbon-label {
-  width: 105px;
-  flex: 0 0 105px;
+.ribbon-category {
+  min-height: 46px;
   display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 0 7px;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 7px 10px 7px 5px;
+  border-right: 1px solid var(--border);
   color: var(--muted);
 }
-.ribbon-label > i {
-  width: 17px;
-  height: 17px;
+.ribbon-category > i {
+  width: 20px;
+  height: 20px;
+  margin-top: 1px;
   color: var(--purple);
+  stroke-width: 1.8;
 }
-.ribbon-label div {
+.ribbon-category > div {
+  min-width: 0;
   display: flex;
   flex-direction: column;
-  min-width: 0;
 }
-.ribbon-label strong {
+.ribbon-category strong {
   font-size: 9px;
+  line-height: 1.2;
   color: var(--text);
   white-space: nowrap;
 }
-.ribbon-label span {
+.ribbon-category span {
+  margin-top: 4px;
   font-size: 7px;
-  margin-top: 2px;
-}
-.ribbon-divider {
-  width: 1px;
-  background: var(--border);
-  margin: 2px 0;
+  color: var(--muted2);
 }
 .ribbon-tools {
-  display: flex;
-  align-items: center;
-  gap: 3px;
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  padding-bottom: 1px;
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  align-items: flex-start;
+  gap: 4px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  max-height: 158px;
+  padding: 0 2px 0 0;
 }
 .ribbon-tool {
-  width: 47px;
-  height: 52px;
-  flex: 0 0 47px;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  padding: 0;
   border: 1px solid transparent;
   border-radius: 7px;
   background: transparent;
   color: var(--muted);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  padding: 0;
+  position: relative;
+}
+.ribbon-tool > i {
+  width: 23px;
+  height: 23px;
+  color: var(--purple);
+  stroke-width: 1.7;
 }
 .ribbon-tool:hover {
   border-color: var(--border);
   background: var(--hover);
+}
+.ribbon-tool:hover > i {
   color: var(--text);
 }
-.ribbon-icon {
-  height: 20px;
-  display: grid;
-  place-items: center;
-  color: var(--purple);
+.ribbon-tool::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: calc(100% + 7px);
+  left: 50%;
+  z-index: 1000;
+  width: max-content;
+  max-width: 260px;
+  padding: 7px 9px;
+  border: 1px solid #35333e;
+  border-radius: 6px;
+  background: #1c1b21;
+  color: #f3f1f7;
+  box-shadow: 0 10px 28px #0009;
+  font-size: 8px;
+  font-weight: 500;
+  line-height: 1.45;
+  white-space: normal;
+  pointer-events: none;
+  opacity: 0;
+  visibility: hidden;
+  transform: translate(-50%, 2px);
+  transition:
+    opacity 0.12s ease,
+    visibility 0.12s ease,
+    transform 0.12s ease;
 }
-.ribbon-icon i {
-  width: 18px;
-  height: 18px;
-}
-.ribbon-short {
-  max-width: 43px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 7px;
-  color: inherit;
-}
-.ribbon-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  padding-left: 5px;
+.ribbon-tool:hover::after {
+  opacity: 1;
+  visibility: visible;
+  transform: translate(-50%, 0);
 }
 .ribbon-search {
-  width: 180px;
-  height: 31px;
-  border: 1px solid var(--border);
-  background: var(--input);
-  border-radius: 7px;
+  width: 100%;
+  height: 34px;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 0 7px;
+  gap: 7px;
+  padding: 0 8px;
+  margin-top: 4px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--input);
   color: var(--muted);
+}
+.ribbon-search > i {
+  width: 15px;
+  height: 15px;
 }
 .ribbon-search input {
   width: 100%;
@@ -251,13 +275,18 @@ button {
   color: var(--text);
   font-size: 9px;
 }
+.ribbon-search input::placeholder {
+  color: var(--muted2);
+}
 .ribbon-search kbd {
-  font-size: 6px;
-  white-space: nowrap;
+  flex: 0 0 auto;
   padding: 3px 4px;
   border: 1px solid var(--border);
   border-radius: 4px;
   background: var(--surface2);
+  color: var(--muted);
+  font-size: 6px;
+  white-space: nowrap;
 }
 .work-area {
   min-height: 0;

@@ -32,39 +32,39 @@
   </header>
 
   <section class="tool-ribbon">
-    <div class="ribbon-label">
+    <div class="ribbon-category">
       <i [attr.data-lucide]="categories.find((c) => c.id === category())?.icon || 'wrench'"></i>
       <div>
-        <strong>{{ categories.find((c) => c.id === category())?.name }}</strong
-        ><span>{{ visibleTools().length }} tools</span>
+        <strong>{{ categories.find((c) => c.id === category())?.name }}</strong>
+        <span>{{ visibleTools().length }} tools</span>
       </div>
     </div>
-    <div class="ribbon-divider"></div>
+
     <div class="ribbon-tools">
       @for (tool of visibleTools(); track tool.id) {
         <button
           class="ribbon-tool"
+          type="button"
           (click)="run(tool.id)"
-          [title]="tool.name + ' — ' + tool.description"
+          [attr.aria-label]="tool.name"
+          [attr.data-tooltip]="tool.name + ' — ' + tool.description"
         >
-          <span class="ribbon-icon"><i [attr.data-lucide]="tool.icon"></i></span>
-          <span class="ribbon-short">{{ tool.shortName }}</span>
+          <i [attr.data-lucide]="tool.icon"></i>
         </button>
       }
     </div>
-    <div class="ribbon-right">
-      <div class="ribbon-search">
-        <i data-lucide="search"></i
-        ><input
-          id="toolSearch"
-          placeholder="Find tool..."
-          [ngModel]="search()"
-          (ngModelChange)="search.set($event)"
-        /><kbd>Ctrl K</kbd>
-      </div>
+
+    <div class="ribbon-search">
+      <i data-lucide="search"></i>
+      <input
+        id="toolSearch"
+        placeholder="Find tool..."
+        [ngModel]="search()"
+        (ngModelChange)="search.set($event)"
+      />
+      <kbd>Ctrl K</kbd>
     </div>
   </section>
-
   <div class="work-area">
     <aside class="sidebar">
       <div class="sidebar-title">
