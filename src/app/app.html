@@ -11,7 +11,7 @@
       <button (click)="selectCategory('convert')">Convert</button>
       <button (click)="selectCategory('code')">Code</button>
       <button (click)="selectCategory('generate')">Generate</button>
-      <button class="ai-menu"><i data-lucide="sparkles"></i>AI</button>
+      <button class="ai-menu" (click)="openAi()"><i data-lucide="sparkles"></i>AI</button>
     </nav>
     <div class="top-actions">
       <span class="engine"><span></span>MANUAL</span>
@@ -273,8 +273,11 @@
       }
 
       <div class="sidebar-spacer"></div>
-      <button class="sidebar-ai">
-        <i data-lucide="sparkles"></i><span><strong>Lexyra AI</strong><small>Optional</small></span>
+      <button class="sidebar-ai" [class.active]="aiOpen()" (click)="openAi()">
+        <i data-lucide="sparkles"></i
+        ><span
+          ><strong>Lexyra AI</strong><small>{{ aiStatusLabel() }}</small></span
+        >
       </button>
     </aside>
 
@@ -330,7 +333,7 @@
           </div>
         </div>
 
-        <div class="editor-zone" [class.with-result]="resultOpen()">
+        <div class="editor-zone" [class.with-result]="resultOpen()" [class.with-ai]="aiOpen()">
           <div class="editor-pane">
             <textarea
               #editor
@@ -370,6 +373,263 @@
                 <button class="primary" (click)="replaceWithResult()">
                   <i data-lucide="replace"></i>Replace document
                 </button>
+              </div>
+            </aside>
+          }
+
+          @if (aiOpen()) {
+            <aside class="ai-pane">
+              <div class="ai-head">
+                <div class="ai-head-title">
+                  <span class="ai-logo"><i data-lucide="sparkles"></i></span>
+                  <div>
+                    <strong>Lexyra AI</strong>
+                    <small>{{ aiStatusLabel() }}</small>
+                  </div>
+                </div>
+
+                <div class="ai-head-actions">
+                  <span
+                    class="ai-status-dot"
+                    [class.online]="ai.ollama.status() === 'online'"
+                    [class.generating]="ai.ollama.status() === 'generating'"
+                    [class.error]="ai.ollama.status() === 'error'"
+                  ></span>
+
+                  <button
+                    type="button"
+                    (click)="aiConnectionOpen.set(!aiConnectionOpen())"
+                    title="AI connection settings"
+                  >
+                    <i data-lucide="settings-2"></i>
+                  </button>
+
+                  <button type="button" (click)="closeAi()" title="Close AI">
+                    <i data-lucide="x"></i>
+                  </button>
+                </div>
+              </div>
+
+              @if (aiConnectionOpen()) {
+                <div class="ai-connection">
+                  <div class="ai-connection-row">
+                    <label>
+                      <span>Ollama URL</span>
+                      <input
+                        [ngModel]="ai.ollama.baseUrl()"
+                        (ngModelChange)="updateOllamaUrl($event)"
+                        placeholder="http://localhost:11434"
+                      />
+                    </label>
+
+                    <button type="button" (click)="refreshAiModels()" [disabled]="ai.generating()">
+                      <i data-lucide="refresh-cw"></i>
+                      Connect
+                    </button>
+                  </div>
+
+                  @if (ai.ollama.error()) {
+                    <div class="ai-connection-error">
+                      <i data-lucide="circle-alert"></i>
+                      <span>{{ ai.ollama.error() }}</span>
+                    </div>
+                  }
+
+                  <div class="ai-local-note">
+                    <i data-lucide="shield-check"></i>
+                    <span
+                      >Ollama runs locally. Manual Lexyra tools remain available without AI.</span
+                    >
+                  </div>
+                </div>
+              }
+
+              <div class="ai-controls">
+                <label class="ai-model">
+                  <span>MODEL</span>
+                  <select
+                    [ngModel]="ai.ollama.model()"
+                    (ngModelChange)="updateAiModel($event)"
+                    [disabled]="!ai.ollama.models().length || ai.generating()"
+                  >
+                    @if (!ai.ollama.models().length) {
+                      <option value="">No local models detected</option>
+                    }
+
+                    @for (model of ai.ollama.models(); track model.name) {
+                      <option [value]="model.name">{{ model.name }}</option>
+                    }
+                  </select>
+                </label>
+
+                <button
+                  class="ai-refresh"
+                  type="button"
+                  (click)="refreshAiModels()"
+                  [disabled]="ai.generating()"
+                  title="Refresh models"
+                >
+                  <i data-lucide="refresh-cw"></i>
+                </button>
+
+                <span class="ai-source">
+                  <i data-lucide="scan-text"></i>
+                  {{ aiSourceLabel() }}
+                </span>
+              </div>
+
+              <div class="ai-actions">
+                @for (action of ai.actions; track action.id) {
+                  <button
+                    type="button"
+                    [class.active]="ai.action() === action.id"
+                    (click)="selectAiAction(action.id)"
+                    [title]="action.description"
+                  >
+                    <i [attr.data-lucide]="action.icon"></i>
+                    <span>{{ action.name }}</span>
+                  </button>
+                }
+              </div>
+
+              <div class="ai-prompt-area">
+                @if (ai.action() === 'custom' || ai.action() === 'generate') {
+                  <label>
+                    <span>{{
+                      ai.action() === 'generate'
+                        ? 'WHAT SHOULD LEXYRA GENERATE?'
+                        : 'CUSTOM INSTRUCTION'
+                    }}</span>
+                    <textarea
+                      id="aiInstruction"
+                      [ngModel]="ai.instruction()"
+                      (ngModelChange)="ai.instruction.set($event)"
+                      [placeholder]="
+                        ai.action() === 'generate'
+                          ? 'Example: Write a professional project introduction...'
+                          : 'Example: Rewrite this as a concise technical explanation...'
+                      "
+                    ></textarea>
+                  </label>
+                }
+
+                @if (ai.action() === 'translate') {
+                  <label class="ai-language">
+                    <span>TARGET LANGUAGE</span>
+                    <input
+                      [ngModel]="ai.language()"
+                      (ngModelChange)="ai.setLanguage($event)"
+                      placeholder="English"
+                    />
+                  </label>
+                }
+
+                <div class="ai-run-row">
+                  <div class="ai-run-context">
+                    @if (aiHadSelection) {
+                      <i data-lucide="text-select"></i>
+                      <span>AI will use the selected text</span>
+                    } @else {
+                      <i data-lucide="file-text"></i>
+                      <span>AI will use the document</span>
+                    }
+                  </div>
+
+                  @if (ai.generating()) {
+                    <button class="ai-stop" type="button" (click)="stopAi()">
+                      <i data-lucide="square"></i>
+                      Stop
+                    </button>
+                  } @else {
+                    <button
+                      class="ai-run"
+                      type="button"
+                      (click)="runAi()"
+                      [disabled]="!ai.ollama.model()"
+                    >
+                      <i data-lucide="sparkles"></i>
+                      Run AI
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <div class="ai-output">
+                <div class="ai-output-head">
+                  <div>
+                    <i data-lucide="bot"></i>
+                    <strong>AI Result</strong>
+                  </div>
+
+                  @if (ai.generating()) {
+                    <span class="ai-streaming">
+                      <i data-lucide="loader-circle"></i>
+                      Streaming
+                    </span>
+                  }
+                </div>
+
+                @if (ai.result()) {
+                  <textarea readonly [value]="ai.result()"></textarea>
+                } @else {
+                  <div class="ai-empty">
+                    @if (ai.ollama.status() === 'offline') {
+                      <i data-lucide="unplug"></i>
+                      <strong>Ollama is offline</strong>
+                      <span>Start Ollama locally, then refresh the connection.</span>
+                      <button type="button" (click)="refreshAiModels()">
+                        <i data-lucide="refresh-cw"></i>
+                        Retry connection
+                      </button>
+                    } @else if (ai.ollama.status() === 'error') {
+                      <i data-lucide="circle-alert"></i>
+                      <strong>AI request failed</strong>
+                      <span>{{ ai.ollama.error() }}</span>
+                    } @else if (ai.generating()) {
+                      <i class="spin" data-lucide="loader-circle"></i>
+                      <strong>Lexyra is thinking...</strong>
+                      <span>The response will appear here as it streams.</span>
+                    } @else {
+                      <i data-lucide="sparkles"></i>
+                      <strong>Ready for local AI</strong>
+                      <span>Choose an action and run it on your text.</span>
+                    }
+                  </div>
+                }
+              </div>
+
+              <div class="ai-result-actions">
+                <button type="button" (click)="copyAiResult()" [disabled]="!ai.result()">
+                  @if (aiCopied()) {
+                    <i data-lucide="check"></i>
+                    Copied
+                  } @else {
+                    <i data-lucide="copy"></i>
+                    Copy
+                  }
+                </button>
+
+                <button type="button" (click)="insertAiResult()" [disabled]="!ai.result()">
+                  <i data-lucide="corner-down-left"></i>
+                  Insert
+                </button>
+
+                <button type="button" (click)="replaceWithAiResult()" [disabled]="!ai.result()">
+                  <i data-lucide="replace"></i>
+                  {{ aiHadSelection ? 'Replace selection' : 'Replace document' }}
+                </button>
+
+                @if (aiHadSelection) {
+                  <button
+                    class="ai-document-replace"
+                    type="button"
+                    (click)="replaceDocumentWithAiResult()"
+                    [disabled]="!ai.result()"
+                    title="Replace the entire document with this result"
+                  >
+                    <i data-lucide="file-output"></i>
+                  </button>
+                }
               </div>
             </aside>
           }

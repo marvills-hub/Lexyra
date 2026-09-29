@@ -14,6 +14,7 @@ import { TextEngine } from './core/engine/text-engine';
 import { TextWorkspaceService } from './core/services/text-workspace.service';
 import { TEXT_TOOLS, TOOL_CATEGORIES } from './shared/constants/tools';
 import { TextTool, ToolCategoryItem } from './core/models/text-tool.model';
+import { LexyraAiService } from './core/ai/lexyra-ai.service';
 
 interface ToolOptions {
   amount: number;
@@ -67,6 +68,13 @@ export class App implements AfterViewChecked {
   commandQuery = signal('');
   commandIndex = signal(0);
   gotoLineValue = 1;
+  aiOpen = signal(false);
+  aiCopied = signal(false);
+  aiSourceLabel = signal('Document');
+  aiSelectionStart = 0;
+  aiSelectionEnd = 0;
+  aiHadSelection = false;
+  aiConnectionOpen = signal(false);
   typingStart: number | null = null;
   typingRaw = '';
   options: ToolOptions = this.readOptions();
@@ -193,10 +201,220 @@ export class App implements AfterViewChecked {
       })
       .slice(0, 30);
   });
-  constructor(public workspace: TextWorkspaceService) {
+  constructor(
+    public workspace: TextWorkspaceService,
+    public ai: LexyraAiService,
+  ) {
     document.documentElement.dataset['theme'] = this.dark() ? 'dark' : 'light';
   }
 
+  async openAi(action?: string) {
+    this.disableTypingTool();
+    this.aiOpen.set(true);
+    this.resultOpen.set(false);
+
+    if (action) this.ai.setAction(action);
+
+    this.captureAiSource();
+
+    if (this.ai.ollama.status() === 'checking' || this.ai.ollama.status() === 'offline') {
+      await this.ai.ollama.refreshModels();
+    }
+
+    setTimeout(() => {
+      if (this.ai.action() === 'custom' || this.ai.action() === 'generate') {
+        document.getElementById('aiInstruction')?.focus();
+      }
+    });
+  }
+
+  closeAi() {
+    if (this.ai.generating()) this.ai.stop();
+    this.aiOpen.set(false);
+    this.aiConnectionOpen.set(false);
+  }
+
+  captureAiSource() {
+    const e = this.editor?.nativeElement;
+    const text = this.workspace.text();
+
+    if (e && e.selectionStart !== e.selectionEnd) {
+      this.aiSelectionStart = e.selectionStart;
+      this.aiSelectionEnd = e.selectionEnd;
+      this.aiHadSelection = true;
+      this.aiSourceLabel.set('Selected text');
+      return text.slice(e.selectionStart, e.selectionEnd);
+    }
+
+    this.aiSelectionStart = 0;
+    this.aiSelectionEnd = text.length;
+    this.aiHadSelection = false;
+    this.aiSourceLabel.set('Entire document');
+    return text;
+  }
+
+  aiSourceText() {
+    const text = this.workspace.text();
+
+    if (this.aiHadSelection) {
+      const start = Math.max(0, Math.min(this.aiSelectionStart, text.length));
+      const end = Math.max(start, Math.min(this.aiSelectionEnd, text.length));
+      return text.slice(start, end);
+    }
+
+    return text;
+  }
+
+  selectAiAction(id: string) {
+    this.ai.setAction(id);
+
+    setTimeout(() => {
+      if (id === 'custom' || id === 'generate') {
+        document.getElementById('aiInstruction')?.focus();
+      }
+    });
+  }
+
+  async runAi() {
+    const source = this.captureAiSource();
+
+    if (!source.trim() && !this.ai.instruction().trim()) {
+      this.ai.ollama.error.set('Enter text or an instruction first.');
+      return;
+    }
+
+    try {
+      await this.ai.run(source);
+    } catch {
+      return;
+    }
+  }
+
+  stopAi() {
+    this.ai.stop();
+  }
+
+  async refreshAiModels() {
+    await this.ai.ollama.refreshModels();
+  }
+
+  updateOllamaUrl(value: string) {
+    this.ai.ollama.setBaseUrl(value);
+  }
+
+  updateAiModel(value: string) {
+    this.ai.ollama.setModel(value);
+  }
+
+  async copyAiResult() {
+    if (!this.ai.result()) return;
+    await navigator.clipboard.writeText(this.ai.result());
+    this.aiCopied.set(true);
+    setTimeout(() => this.aiCopied.set(false), 1000);
+  }
+
+  insertAiResult() {
+    const output = this.ai.result();
+    if (!output) return;
+
+    const current = this.workspace.text();
+    const e = this.editor?.nativeElement;
+
+    if (this.aiHadSelection) {
+      const start = Math.max(0, Math.min(this.aiSelectionEnd, current.length));
+      const spacer = start > 0 && current[start - 1] !== '\n' ? '\n' : '';
+      const next = current.slice(0, start) + spacer + output + current.slice(start);
+
+      this.workspace.set(next);
+      this.aiSelectionStart = start + spacer.length;
+      this.aiSelectionEnd = this.aiSelectionStart + output.length;
+      this.aiHadSelection = true;
+
+      setTimeout(() => {
+        e?.focus();
+        e?.setSelectionRange(this.aiSelectionStart, this.aiSelectionEnd);
+      });
+
+      return;
+    }
+
+    const start = e?.selectionStart ?? current.length;
+    const end = e?.selectionEnd ?? start;
+    const spacer = current && start === current.length && !current.endsWith('\n') ? '\n' : '';
+    const next = current.slice(0, start) + spacer + output + current.slice(end);
+
+    this.workspace.set(next);
+
+    const resultStart = start + spacer.length;
+    const resultEnd = resultStart + output.length;
+
+    setTimeout(() => {
+      e?.focus();
+      e?.setSelectionRange(resultStart, resultEnd);
+    });
+  }
+
+  replaceWithAiResult() {
+    const output = this.ai.result();
+    if (!output) return;
+
+    const current = this.workspace.text();
+    const e = this.editor?.nativeElement;
+
+    if (this.aiHadSelection) {
+      const start = Math.max(0, Math.min(this.aiSelectionStart, current.length));
+      const end = Math.max(start, Math.min(this.aiSelectionEnd, current.length));
+
+      this.workspace.set(current.slice(0, start) + output + current.slice(end));
+      this.aiSelectionStart = start;
+      this.aiSelectionEnd = start + output.length;
+      this.aiHadSelection = true;
+
+      setTimeout(() => {
+        e?.focus();
+        e?.setSelectionRange(this.aiSelectionStart, this.aiSelectionEnd);
+      });
+
+      return;
+    }
+
+    this.workspace.set(output);
+    this.aiSelectionStart = 0;
+    this.aiSelectionEnd = output.length;
+    this.aiHadSelection = false;
+
+    setTimeout(() => {
+      e?.focus();
+      e?.setSelectionRange(0, output.length);
+    });
+  }
+
+  replaceDocumentWithAiResult() {
+    const output = this.ai.result();
+    if (!output) return;
+
+    this.workspace.set(output);
+    this.aiSelectionStart = 0;
+    this.aiSelectionEnd = output.length;
+    this.aiHadSelection = false;
+
+    setTimeout(() => this.editor?.nativeElement.focus());
+  }
+
+  aiStatusLabel() {
+    switch (this.ai.ollama.status()) {
+      case 'online':
+        return 'Local AI online';
+      case 'generating':
+        return 'Generating';
+      case 'error':
+        return 'AI error';
+      case 'checking':
+        return 'Checking Ollama';
+      default:
+        return 'Ollama offline';
+    }
+  }
   ngAfterViewChecked() {
     createIcons({ icons });
   }
