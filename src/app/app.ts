@@ -93,15 +93,15 @@ export class App implements AfterViewChecked {
           old[old.length - 1 - suffix] === v[v.length - 1 - suffix]
         )
           suffix++;
-        const inserted = v.slice(prefix, v.length - suffix);
-        const transformed = this.applyTransform(active, inserted);
+        const inserted = v.slice(prefix, v.length - suffix),
+          transformed = TextEngine.transform(active, inserted);
         if (transformed !== null) {
           v = v.slice(0, prefix) + transformed + v.slice(v.length - suffix);
-          const nextCaret = prefix + transformed.length;
+          const caret = prefix + transformed.length;
           setTimeout(() => {
-            const editor = this.editor?.nativeElement;
-            editor?.focus();
-            editor?.setSelectionRange(nextCaret, nextCaret);
+            const e = this.editor?.nativeElement;
+            e?.focus();
+            e?.setSelectionRange(caret, caret);
           });
         }
       }
@@ -122,140 +122,59 @@ export class App implements AfterViewChecked {
       };
     return { text: t, start: 0, end: t.length, selected: false };
   }
-  applyTransform(id: string, value: string): string | null {
-    const ops: Record<string, (x: string) => string> = {
-      upper: TextEngine.upper,
-      lower: TextEngine.lower,
-      title: TextEngine.title,
-      sentence: TextEngine.sentence,
-      camel: TextEngine.camel.bind(TextEngine),
-      pascal: TextEngine.pascal.bind(TextEngine),
-      snake: TextEngine.snake.bind(TextEngine),
-      kebab: TextEngine.kebab.bind(TextEngine),
-      constant: TextEngine.constant.bind(TextEngine),
-      dot: TextEngine.dot.bind(TextEngine),
-      path: TextEngine.path.bind(TextEngine),
-      slug: TextEngine.slug.bind(TextEngine),
-      trim: TextEngine.trim,
-      spaces: TextEngine.cleanSpaces,
-      empty: TextEngine.removeEmptyLines,
-      duplicates: TextEngine.removeDuplicateLines,
-      uniqueWords: TextEngine.uniqueWords.bind(TextEngine),
-      diacritics: TextEngine.removeDiacritics,
-      unicode: TextEngine.normalizeUnicode,
-      removeHtml: TextEngine.removeHtml,
-      sortAsc: TextEngine.sortAsc,
-      sortDesc: TextEngine.sortDesc.bind(TextEngine),
-      reverseLines: TextEngine.reverseLines,
-      reverseText: TextEngine.reverseText,
-      shuffleLines: TextEngine.shuffleLines,
-      number: TextEngine.numberLines,
-      removeNumbers: TextEngine.removeLineNumbers,
-      bullets: TextEngine.bullets,
-      joinLines: TextEngine.joinLines,
-      tabsSpaces: TextEngine.tabsToSpaces,
-      spacesTabs: TextEngine.spacesToTabs,
-      urlEncode: TextEngine.urlEncode,
-      urlDecode: TextEngine.urlDecode,
-      base64Encode: TextEngine.base64Encode,
-      base64Decode: TextEngine.base64Decode,
-      htmlEncode: TextEngine.htmlEncode,
-      htmlDecode: TextEngine.htmlDecode,
-      rot13: TextEngine.rot13,
-      textBinary: TextEngine.textToBinary,
-      binaryText: TextEngine.binaryToText,
-      textHex: TextEngine.textToHex,
-      hexText: TextEngine.hexToText,
-      jsonPretty: TextEngine.jsonPretty,
-      jsonMinify: TextEngine.jsonMinify,
-      csvJson: TextEngine.csvToJson.bind(TextEngine),
-      jsonCsv: TextEngine.jsonToCsv.bind(TextEngine),
-      escapeJs: TextEngine.escapeJs,
-      unescapeJs: TextEngine.unescapeJs,
-    };
-    const fn = ops[id];
-    return fn ? fn(value) : null;
+  async digest(algorithm: string, text: string) {
+    const hash = await crypto.subtle.digest(algorithm, new TextEncoder().encode(text));
+    return [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
   }
-
   async run(id: string) {
     const tool = this.tools.find((t) => t.id === id);
     if (!tool) return;
-
     const src = this.source();
-
     if (tool.behavior === 'transform' && !src.selected) {
       this.activeTypingTool.update((current) => (current === id ? null : id));
       setTimeout(() => this.editor?.nativeElement.focus());
       return;
     }
-
-    let output = src.text;
-
-    if (id === 'sha256') {
-      const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(src.text));
-      output = [...new Uint8Array(hash)].map((x) => x.toString(16).padStart(2, '0')).join('');
-    } else if (tool.behavior === 'result') {
-      const resultOps: Record<string, (x: string) => string> = {
-        jsonValidate: TextEngine.jsonValidate,
-        emails: TextEngine.extractEmails,
-        urls: TextEngine.extractUrls,
-        numbersOnly: TextEngine.extractNumbers,
-        hashtags: TextEngine.extractHashtags,
-        frequency: TextEngine.wordFrequency.bind(TextEngine),
-        lineLength: TextEngine.lineLength,
-        password: () => TextEngine.password(),
-        passphrase: () => TextEngine.passphrase(),
-        uuid: () => TextEngine.uuid(),
-        random: () => TextEngine.randomString(),
-        lorem: () => TextEngine.lorem(),
-        timestamp: () => TextEngine.timestamp(),
-      };
-      const fn = resultOps[id];
-      if (!fn) return;
-      output = fn(src.text);
-    } else {
-      const transformed = this.applyTransform(id, src.text);
-      if (transformed === null) return;
-      output = transformed;
-    }
-
+    let output: string | null = null;
+    if (id === 'sha256') output = await this.digest('SHA-256', src.text);
+    else if (id === 'sha1') output = await this.digest('SHA-1', src.text);
+    else if (id === 'sha384') output = await this.digest('SHA-384', src.text);
+    else if (id === 'sha512') output = await this.digest('SHA-512', src.text);
+    else if (tool.behavior === 'result') output = TextEngine.result(id, src.text);
+    else output = TextEngine.transform(id, src.text);
+    if (output === null) return;
     if (tool.behavior === 'result') {
       this.resultTitle.set(tool.name);
       this.result.set(output);
       this.resultOpen.set(true);
       return;
     }
-
     const current = this.workspace.text();
-
     if (src.selected) {
       this.workspace.set(current.slice(0, src.start) + output + current.slice(src.end));
       this.activeTypingTool.set(null);
-
       setTimeout(() => {
-        const editor = this.editor?.nativeElement;
-        editor?.focus();
-        editor?.setSelectionRange(src.start, src.start + output.length);
+        const e = this.editor?.nativeElement;
+        e?.focus();
+        e?.setSelectionRange(src.start, src.start + output!.length);
       });
     }
   }
-
   replace() {
     if (this.findText)
       this.workspace.set(this.workspace.text().split(this.findText).join(this.replaceText));
   }
   insertResult() {
-    const e = this.editor?.nativeElement;
-    const current = this.workspace.text();
+    const e = this.editor?.nativeElement,
+      current = this.workspace.text();
     if (!e) {
       this.workspace.set(current + this.result());
       return;
     }
     const start = e.selectionStart,
-      end = e.selectionEnd;
-    const spacer = current && start === current.length && !current.endsWith('\n') ? '\n' : '';
-    const value = current.slice(0, start) + spacer + this.result() + current.slice(end);
-    this.workspace.set(value);
+      end = e.selectionEnd,
+      spacer = current && start === current.length && !current.endsWith('\n') ? '\n' : '';
+    this.workspace.set(current.slice(0, start) + spacer + this.result() + current.slice(end));
     this.resultOpen.set(false);
     setTimeout(() => e.focus());
   }
