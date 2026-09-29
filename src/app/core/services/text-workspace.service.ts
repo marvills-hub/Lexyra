@@ -10,8 +10,7 @@ export class TextWorkspaceService {
   set(value: string, remember = true) {
     if (value === this.text()) return;
     if (remember) {
-      const h = [...this.history(), this.text()];
-      this.history.set(h.slice(-50));
+      this.history.set([...this.history(), this.text()].slice(-80));
       this.future.set([]);
     }
     this.text.set(value);
@@ -20,20 +19,19 @@ export class TextWorkspaceService {
   undo() {
     const h = this.history();
     if (!h.length) return;
-    const previous = h[h.length - 1];
+    const v = h[h.length - 1];
     this.future.set([this.text(), ...this.future()]);
     this.history.set(h.slice(0, -1));
-    this.text.set(previous);
-    localStorage.setItem('lexyra.text', previous);
+    this.text.set(v);
+    localStorage.setItem('lexyra.text', v);
   }
   redo() {
     const f = this.future();
     if (!f.length) return;
     this.history.set([...this.history(), this.text()]);
-    const next = f[0];
+    this.text.set(f[0]);
     this.future.set(f.slice(1));
-    this.text.set(next);
-    localStorage.setItem('lexyra.text', next);
+    localStorage.setItem('lexyra.text', f[0]);
   }
   clear() {
     this.set('');

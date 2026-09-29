@@ -1,75 +1,90 @@
 ﻿<div class="app-shell">
-  <aside class="sidebar" [class.closed]="!sidebarOpen()">
-    <div class="brand">
-      <div class="brand-mark">L</div>
-      <div class="brand-copy">
-        <strong>Lexyra</strong>
-        <span>TEXT INTELLIGENCE</span>
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-mark">L</div>
+        <div class="brand-copy"><strong>Lexyra</strong><span>TEXT ENGINE</span></div>
       </div>
-    </div>
-    <div class="search">
-      <i data-lucide="search"></i>
-      <input
-        placeholder="Search tools..."
-        [ngModel]="query()"
-        (ngModelChange)="query.set($event)"
-      />
-      <kbd>⌘K</kbd>
-    </div>
-    <nav class="categories">
-      <button [class.active]="category() === 'all'" (click)="category.set('all')">
-        <i data-lucide="layout-grid"></i><span>All tools</span>
-      </button>
-      <button [class.active]="category() === 'case'" (click)="category.set('case')">
-        <i data-lucide="case-sensitive"></i><span>Text case</span>
-      </button>
-      <button [class.active]="category() === 'cleanup'" (click)="category.set('cleanup')">
-        <i data-lucide="sparkles"></i><span>Cleanup</span>
-      </button>
-      <button [class.active]="category() === 'lines'" (click)="category.set('lines')">
-        <i data-lucide="list"></i><span>Lines</span>
-      </button>
-      <button [class.active]="category() === 'encode'" (click)="category.set('encode')">
-        <i data-lucide="binary"></i><span>Encode</span>
-      </button>
-      <button [class.active]="category() === 'developer'" (click)="category.set('developer')">
-        <i data-lucide="code-2"></i><span>Developer</span>
-      </button>
-    </nav>
-    <div class="sidebar-label">TOOLS</div>
-    <div class="tool-list">
-      @for (tool of filteredTools(); track tool.id) {
-        <button class="tool" (click)="apply(tool.id)">
-          <span class="tool-icon"><i [attr.data-lucide]="tool.icon"></i></span>
-          <span
-            ><strong>{{ tool.name }}</strong
-            ><small>{{ tool.description }}</small></span
+      <nav class="main-nav">
+        <button class="nav-button active">
+          <i data-lucide="file-text"></i><span>Editor</span>
+        </button>
+        <div class="nav-group">
+          <button
+            class="nav-button"
+            [class.open]="menu() === 'format'"
+            (click)="toggleMenu('format')"
           >
-        </button>
-      }
-    </div>
-    <div class="ai-card">
-      <span class="ai-icon"><i data-lucide="sparkles"></i></span>
-      <div><strong>Lexyra AI</strong><small>AI tools coming next</small></div>
-      <span class="offline">OPTIONAL</span>
-    </div>
-  </aside>
-
-  <main class="main">
-    <header class="topbar">
-      <div class="top-left">
-        <button class="icon-btn" (click)="sidebarOpen.update((v) => !v)" title="Toggle sidebar">
-          <i data-lucide="panel-left"></i>
-        </button>
-        <div>
-          <h1>Text Workspace</h1>
-          <p>Write, transform and refine anything.</p>
+            <i data-lucide="type"></i><span>Format</span
+            ><i class="chevron" data-lucide="chevron-down"></i>
+          </button>
+          @if (menu() === 'format') {
+            <div class="dropdown">
+              <div class="dropdown-head">
+                <strong>Format text</strong><span>Applies to selection when available</span>
+              </div>
+              <div class="dropdown-grid">
+                <button (click)="quick('upper')">UPPERCASE</button
+                ><button (click)="quick('lower')">lowercase</button>
+                <button (click)="quick('title')">Title Case</button
+                ><button (click)="quick('sentence')">Sentence case</button>
+                <button (click)="quick('camel')">camelCase</button
+                ><button (click)="quick('pascal')">PascalCase</button>
+                <button (click)="quick('snake')">snake_case</button
+                ><button (click)="quick('kebab')">kebab-case</button>
+              </div>
+            </div>
+          }
         </div>
-      </div>
-      <div class="top-actions">
-        <span class="manual-badge"><span></span>MANUAL ENGINE</span>
+        <div class="nav-group">
+          <button
+            class="nav-button"
+            [class.open]="menu() === 'convert'"
+            (click)="toggleMenu('convert')"
+          >
+            <i data-lucide="arrow-left-right"></i><span>Convert</span
+            ><i class="chevron" data-lucide="chevron-down"></i>
+          </button>
+          @if (menu() === 'convert') {
+            <div class="dropdown convert-dropdown">
+              <div class="dropdown-head">
+                <strong>Quick conversions</strong><span>Common manual encoders and converters</span>
+              </div>
+              <div class="dropdown-grid">
+                <button (click)="quick('base64Encode')">Base64 Encode</button
+                ><button (click)="quick('base64Decode')">Base64 Decode</button>
+                <button (click)="quick('urlEncode')">URL Encode</button
+                ><button (click)="quick('urlDecode')">URL Decode</button>
+                <button (click)="quick('textHex')">Text → Hex</button
+                ><button (click)="quick('hexText')">Hex → Text</button>
+                <button (click)="quick('textBinary')">Text → Binary</button
+                ><button (click)="quick('binaryText')">Binary → Text</button>
+              </div>
+            </div>
+          }
+        </div>
+        <button class="nav-button" (click)="openTools()">
+          <i data-lucide="wrench"></i><span>Tools</span>
+        </button>
+        <button class="nav-button" (click)="openTools('code')">
+          <i data-lucide="code-2"></i><span>Code</span>
+        </button>
+        <button class="nav-button" (click)="openTools('generate')">
+          <i data-lucide="wand-sparkles"></i><span>Generate</span>
+        </button>
         <button
-          class="icon-btn"
+          class="nav-button ai-nav"
+          (click)="aiOpen.set(true); toolsOpen.set(false); menu.set(null)"
+        >
+          <i data-lucide="sparkles"></i><span>AI</span>
+        </button>
+      </nav>
+      <div class="header-actions">
+        <button class="header-icon" (click)="openTools()" title="Search tools">
+          <i data-lucide="search"></i>
+        </button>
+        <button
+          class="header-icon"
           (click)="workspace.undo()"
           [disabled]="!workspace.history().length"
           title="Undo"
@@ -77,14 +92,14 @@
           <i data-lucide="undo-2"></i>
         </button>
         <button
-          class="icon-btn"
+          class="header-icon"
           (click)="workspace.redo()"
           [disabled]="!workspace.future().length"
           title="Redo"
         >
           <i data-lucide="redo-2"></i>
         </button>
-        <button class="icon-btn" (click)="toggleTheme()" title="Theme">
+        <button class="header-icon" (click)="toggleTheme()" title="Theme">
           @if (dark()) {
             <i data-lucide="sun"></i>
           } @else {
@@ -92,43 +107,76 @@
           }
         </button>
       </div>
-    </header>
+    </div>
+  </header>
 
-    <section class="workspace">
-      <div class="editor-card">
-        <div class="editor-toolbar">
-          <div class="file-name"><span class="status-dot"></span>Untitled.txt</div>
-          <div class="editor-actions">
-            <button (click)="copy()">
-              @if (copied()) {
-                <i data-lucide="check"></i>
-              } @else {
-                <i data-lucide="copy"></i>
-              }
-              {{ copied() ? 'Copied' : 'Copy' }}
-            </button>
-            <button (click)="download()"><i data-lucide="download"></i>Export</button>
-            <button class="danger" (click)="workspace.clear()">
-              <i data-lucide="trash-2"></i>Clear
-            </button>
+  <main class="workspace">
+    <div class="workspace-head">
+      <div>
+        <div class="eyebrow">WORKSPACE</div>
+        <h1>Text Editor</h1>
+        <p>Write, format, convert and process text without leaving your workspace.</p>
+      </div>
+      <div class="workspace-actions">
+        <span class="engine-status"><span></span>MANUAL ENGINE</span>
+        <input
+          #fileInput
+          hidden
+          type="file"
+          accept=".txt,.md,.json,.csv,.xml,.html,.css,.js,.ts,.log"
+          (change)="loadFile($event)"
+        />
+        <button class="action-button" (click)="importFile(fileInput)">
+          <i data-lucide="upload"></i>Import
+        </button>
+        <button class="action-button" (click)="download()">
+          <i data-lucide="download"></i>Export
+        </button>
+      </div>
+    </div>
+
+    <section class="editor-card">
+      <div class="editor-toolbar">
+        <div class="document-info">
+          <span class="document-status"></span>
+          <div>
+            <strong>Untitled.txt</strong><span>{{ saved() ? 'Saved locally' : 'Saving...' }}</span>
           </div>
         </div>
-        <textarea
-          autofocus
-          spellcheck="true"
-          placeholder="Start writing or paste your text here..."
-          [ngModel]="workspace.text()"
-          (ngModelChange)="update($event)"
-        ></textarea>
-        <div class="stats">
+        <div class="editor-actions">
+          <button (click)="execute('spaces')" title="Clean spaces">
+            <i data-lucide="sparkles"></i><span>Clean</span>
+          </button>
+          <button (click)="copy()" title="Copy">
+            @if (copied()) {
+              <i data-lucide="check"></i><span>Copied</span>
+            } @else {
+              <i data-lucide="copy"></i><span>Copy</span>
+            }
+          </button>
+          <button class="clear" (click)="workspace.clear()" title="Clear">
+            <i data-lucide="trash-2"></i><span>Clear</span>
+          </button>
+        </div>
+      </div>
+      <textarea
+        #editor
+        spellcheck="true"
+        autofocus
+        [ngModel]="workspace.text()"
+        (ngModelChange)="update($event)"
+        (select)="captureSelection()"
+        (keyup)="captureSelection()"
+        (mouseup)="captureSelection()"
+        placeholder="Start writing or paste your text here..."
+      ></textarea>
+      <div class="editor-status">
+        <div class="stat-group">
           <span
             ><strong>{{ workspace.stats().words }}</strong> words</span
           >
           <span
             ><strong>{{ workspace.stats().characters }}</strong> characters</span
-          >
-          <span
-            ><strong>{{ workspace.stats().charactersNoSpaces }}</strong> without spaces</span
           >
           <span
             ><strong>{{ workspace.stats().sentences }}</strong> sentences</span
@@ -139,42 +187,120 @@
           <span
             ><strong>{{ workspace.stats().lines }}</strong> lines</span
           >
-          <span class="reading"
-            ><i data-lucide="clock-3"></i>{{ workspace.stats().readingMinutes }} min read</span
-          >
         </div>
-      </div>
-
-      <div class="bottom-grid">
-        <div class="panel find-panel">
-          <div class="panel-title">
-            <div><i data-lucide="search"></i><strong>Find & Replace</strong></div>
-            <span>MANUAL</span>
-          </div>
-          <div class="replace-fields">
-            <input [(ngModel)]="findText" placeholder="Find text" />
-            <i data-lucide="arrow-right"></i>
-            <input [(ngModel)]="replaceText" placeholder="Replace with" />
-            <button (click)="replace()">Replace all</button>
-          </div>
-        </div>
-        <div class="panel quick-panel">
-          <div class="panel-title">
-            <div><i data-lucide="zap"></i><strong>Quick actions</strong></div>
-          </div>
-          <div class="quick-actions">
-            <button (click)="apply('upper')">UPPERCASE</button>
-            <button (click)="apply('lower')">lowercase</button>
-            <button (click)="apply('title')">Title Case</button>
-            <button (click)="apply('spaces')">Clean spaces</button>
-          </div>
-        </div>
+        <span class="read-time"
+          ><i data-lucide="clock-3"></i>{{ workspace.stats().readingMinutes }} min read</span
+        >
       </div>
     </section>
 
-    <footer>
-      <span><span class="ready"></span>Lexyra ready</span>
-      <span>Local manual engine · No AI required · Autosaved</span>
-    </footer>
+    <section class="utility-row">
+      <div class="utility-card">
+        <div class="utility-title">
+          <div><i data-lucide="search"></i><strong>Find & Replace</strong></div>
+          <span>MANUAL</span>
+        </div>
+        <div class="replace-row">
+          <input [(ngModel)]="findText" placeholder="Find text" />
+          <i data-lucide="arrow-right"></i>
+          <input [(ngModel)]="replaceText" placeholder="Replace with" />
+          <button (click)="replace()">Replace all</button>
+        </div>
+      </div>
+      <div class="utility-card">
+        <div class="utility-title">
+          <div><i data-lucide="zap"></i><strong>Quick Actions</strong></div>
+          <button class="view-all" (click)="openTools()">View all tools</button>
+        </div>
+        <div class="quick-row">
+          <button (click)="execute('upper')">UPPERCASE</button>
+          <button (click)="execute('title')">Title Case</button>
+          <button (click)="execute('duplicates')">Deduplicate</button>
+          <button (click)="execute('sortAsc')">Sort A–Z</button>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <footer class="app-footer">
+    <span><span class="ready-dot"></span>Lexyra ready</span>
+    <span>{{ tools.length }} manual tools · Offline capable · Autosaved locally</span>
+  </footer>
+
+  @if (toolsOpen()) {
+    <div class="overlay" (click)="closePanels()"></div>
+    <aside class="tool-center">
+      <div class="panel-header">
+        <div>
+          <span class="panel-icon"><i data-lucide="wrench"></i></span>
+          <div><strong>Lexyra Tools</strong><span>All-purpose text utilities</span></div>
+        </div>
+        <button (click)="closePanels()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="tool-search">
+        <i data-lucide="search"></i>
+        <input
+          autofocus
+          placeholder="Search {{ tools.length }} tools..."
+          [ngModel]="query()"
+          (ngModelChange)="query.set($event)"
+        />
+        <kbd>ESC</kbd>
+      </div>
+      <div class="tool-layout">
+        <nav class="tool-categories">
+          @for (cat of categories; track cat.id) {
+            <button [class.active]="category() === cat.id" (click)="category.set(cat.id)">
+              <i [attr.data-lucide]="cat.icon"></i><span>{{ cat.name }}</span>
+            </button>
+          }
+        </nav>
+        <div class="tool-content">
+          <div class="tool-content-head">
+            <div>
+              <strong>{{ category() === 'all' ? 'All Tools' : (category() | titlecase) }}</strong
+              ><span>{{ filteredTools().length }} utilities</span>
+            </div>
+          </div>
+          <div class="tool-grid">
+            @for (tool of filteredTools(); track tool.id) {
+              <button class="tool-card" (click)="execute(tool.id)">
+                <span class="tool-card-icon"><i [attr.data-lucide]="tool.icon"></i></span>
+                <span class="tool-card-copy"
+                  ><strong>{{ tool.name }}</strong
+                  ><small>{{ tool.description }}</small></span
+                >
+                <i class="run-icon" data-lucide="arrow-up-right"></i>
+              </button>
+            }
+          </div>
+        </div>
+      </div>
+    </aside>
+  }
+
+  @if (aiOpen()) {
+    <div class="overlay" (click)="closePanels()"></div>
+    <aside class="ai-panel">
+      <div class="panel-header">
+        <div>
+          <span class="panel-icon ai"><i data-lucide="sparkles"></i></span>
+          <div><strong>Lexyra AI</strong><span>Optional intelligence layer</span></div>
+        </div>
+        <button (click)="closePanels()"><i data-lucide="x"></i></button>
+      </div>
+      <div class="ai-empty">
+        <span><i data-lucide="sparkles"></i></span>
+        <h2>AI without dependency</h2>
+        <p>
+          Lexyra's manual engine remains fully usable without AI. The provider layer will connect
+          local Ollama and optional cloud models here.
+        </p>
+        <div class="ai-features">
+          <span>Rewrite</span><span>Summarize</span><span>Paraphrase</span><span>Translate</span
+          ><span>Generate</span><span>Explain</span>
+        </div>
+      </div>
+    </aside>
+  }
 </div>
