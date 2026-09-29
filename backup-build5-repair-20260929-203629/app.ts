@@ -14,7 +14,6 @@ import { TextEngine } from './core/engine/text-engine';
 import { TextWorkspaceService } from './core/services/text-workspace.service';
 import { TEXT_TOOLS, TOOL_CATEGORIES } from './shared/constants/tools';
 import { TextTool, ToolCategoryItem } from './core/models/text-tool.model';
-import { LexyraAiService } from './core/ai/lexyra-ai.service';
 
 interface ToolOptions {
   amount: number;
@@ -68,13 +67,6 @@ export class App implements AfterViewChecked {
   commandQuery = signal('');
   commandIndex = signal(0);
   gotoLineValue = 1;
-  aiOpen = signal(false);
-  aiCopied = signal(false);
-  aiSourceLabel = signal('Document');
-  aiSelectionStart = 0;
-  aiSelectionEnd = 0;
-  aiHadSelection = false;
-  aiConnectionOpen = signal(false);
   typingStart: number | null = null;
   typingRaw = '';
   options: ToolOptions = this.readOptions();
@@ -125,288 +117,17 @@ export class App implements AfterViewChecked {
       .filter((t): t is TextTool => !!t),
   );
 
-  openToolGroup = signal<string | null>(null);
-  toolbarGroupDefinitions = [
-    {
-      id: 'case',
-      name: 'Case',
-      icon: 'case-sensitive',
-      ids: [
-        'upper',
-        'lower',
-        'title',
-        'sentence',
-        'capitalize',
-        'toggleCase',
-        'alternating',
-        'inverseAlternating',
-      ],
-    },
-    {
-      id: 'naming',
-      name: 'Naming',
-      icon: 'braces',
-      ids: [
-        'camel',
-        'pascal',
-        'snake',
-        'kebab',
-        'constant',
-        'dot',
-        'path',
-        'slug',
-        'train',
-        'spaceCase',
-      ],
-    },
-    {
-      id: 'markdown',
-      name: 'Markdown',
-      icon: 'heading',
-      ids: [
-        'quote',
-        'markdownBold',
-        'markdownItalic',
-        'markdownStrike',
-        'markdownCode',
-        'markdownH1',
-        'markdownH2',
-        'markdownH3',
-      ],
-    },
-    {
-      id: 'whitespace',
-      name: 'Whitespace',
-      icon: 'space',
-      ids: [
-        'trim',
-        'spaces',
-        'trimLines',
-        'empty',
-        'collapseEmpty',
-        'tabsSpaces',
-        'spacesTabs',
-        'stripTrailing',
-        'stripLeading',
-      ],
-    },
-    {
-      id: 'remove',
-      name: 'Remove',
-      icon: 'eraser',
-      ids: [
-        'duplicates',
-        'duplicateWords',
-        'uniqueWords',
-        'diacritics',
-        'removeHtml',
-        'removePunctuation',
-        'removeNumbersText',
-        'removeLetters',
-        'removeSymbols',
-        'removeEmoji',
-        'removeUrls',
-        'removeEmails',
-        'removeInvisible',
-      ],
-    },
-    {
-      id: 'normalize',
-      name: 'Normalize',
-      icon: 'sparkles',
-      ids: ['unicode', 'normalizeQuotes', 'normalizeDashes'],
-    },
-    {
-      id: 'sort',
-      name: 'Sort',
-      icon: 'arrow-down-a-z',
-      ids: [
-        'sortAsc',
-        'sortDesc',
-        'sortLengthAsc',
-        'sortLengthDesc',
-        'reverseLines',
-        'reverseText',
-        'shuffleLines',
-      ],
-    },
-    {
-      id: 'lists',
-      name: 'Lists',
-      icon: 'list',
-      ids: ['number', 'removeNumbers', 'bullets', 'dashList', 'checkboxList'],
-    },
-    {
-      id: 'lines',
-      name: 'Lines',
-      icon: 'rows-3',
-      ids: ['joinLines', 'splitWords', 'prefixLines', 'suffixComma', 'commaList', 'semicolonList'],
-    },
-    {
-      id: 'encode',
-      name: 'Encode',
-      icon: 'binary',
-      ids: [
-        'urlEncode',
-        'urlDecode',
-        'base64Encode',
-        'base64Decode',
-        'htmlEncode',
-        'htmlDecode',
-        'rot13',
-      ],
-    },
-    {
-      id: 'codes',
-      name: 'Text Codes',
-      icon: 'languages',
-      ids: [
-        'textBinary',
-        'binaryText',
-        'textHex',
-        'hexText',
-        'textUnicode',
-        'unicodeText',
-        'decimalCodes',
-        'decimalText',
-      ],
-    },
-    {
-      id: 'uri',
-      name: 'URI & Escapes',
-      icon: 'globe',
-      ids: ['uriComponent', 'uriDecode', 'newlineEscapes', 'escapesNewline'],
-    },
-    {
-      id: 'json',
-      name: 'JSON',
-      icon: 'braces',
-      ids: ['jsonPretty', 'jsonMinify', 'jsonValidate', 'queryJson', 'jsonQuery'],
-    },
-    { id: 'data', name: 'Data', icon: 'table', ids: ['csvJson', 'jsonCsv'] },
-    {
-      id: 'code',
-      name: 'Code',
-      icon: 'code-2',
-      ids: ['htmlPretty', 'htmlMinify', 'cssMinify', 'sqlPretty', 'xmlPretty', 'xmlMinify'],
-    },
-    { id: 'passwords', name: 'Passwords', icon: 'key-round', ids: ['password', 'passphrase'] },
-    {
-      id: 'random',
-      name: 'Random',
-      icon: 'dices',
-      ids: ['uuid', 'random', 'randomAlpha', 'randomNumeric'],
-    },
-    { id: 'placeholder', name: 'Placeholder', icon: 'text', ids: ['lorem', 'loremParagraphs'] },
-    { id: 'date', name: 'Date & Time', icon: 'clock', ids: ['timestamp', 'dateIso'] },
-    {
-      id: 'extract',
-      name: 'Extract',
-      icon: 'scan-search',
-      ids: ['emails', 'urls', 'numbersOnly', 'hashtags', 'mentions'],
-    },
-    {
-      id: 'analysis',
-      name: 'Analyze',
-      icon: 'chart-bar',
-      ids: [
-        'frequency',
-        'lineLength',
-        'longestWords',
-        'duplicateLineReport',
-        'alphabeticalWords',
-        'statsReport',
-      ],
-    },
-    {
-      id: 'escape',
-      name: 'Escape',
-      icon: 'regex',
-      ids: ['escapeJs', 'unescapeJs', 'escapeRegex', 'quoteJsonString', 'unquoteJsonString'],
-    },
-    {
-      id: 'indent',
-      name: 'Indent',
-      icon: 'indent-increase',
-      ids: ['indent2', 'indent4', 'outdent'],
-    },
-    {
-      id: 'endings',
-      name: 'Line Endings',
-      icon: 'wrap-text',
-      ids: ['lineEndingLf', 'lineEndingCrlf'],
-    },
-    { id: 'hash', name: 'Hash', icon: 'shield-check', ids: ['sha256', 'sha1', 'sha384', 'sha512'] },
-    { id: 'inspect', name: 'Inspect', icon: 'scan-search', ids: ['invisible', 'passwordStrength'] },
-  ];
-
-  toolbarGroups = computed(() => {
-    const visible = this.visibleTools();
-    const visibleIds = new Set(visible.map((tool) => tool.id));
-    const groups = this.toolbarGroupDefinitions
-      .map((group) => ({
-        ...group,
-        tools: group.ids
-          .map((id) => visible.find((tool) => tool.id === id))
-          .filter((tool): tool is TextTool => !!tool),
-      }))
-      .filter((group) => group.tools.length);
-    const groupedIds = new Set(groups.flatMap((group) => group.tools.map((tool) => tool.id)));
-    const standalone = visible.filter(
-      (tool) => visibleIds.has(tool.id) && !groupedIds.has(tool.id),
-    );
-    return { groups, standalone };
-  });
-
-  toggleToolGroup(id: string, event?: Event) {
-    event?.stopPropagation();
-    this.openToolGroup.set(this.openToolGroup() === id ? null : id);
-  }
-
-  closeToolGroups() {
-    this.openToolGroup.set(null);
-  }
-
-  async runGroupedTool(id: string) {
-    this.openToolGroup.set(null);
-    await this.run(id);
-  }
   editorCommands = [
     { id: 'editor.selectAll', name: 'Select All', icon: 'scan-text', shortcut: 'Ctrl+A' },
-    {
-      id: 'editor.selectLine',
-      name: 'Select Current Line',
-      icon: 'text-select',
-      shortcut: 'Alt+L',
-    },
-    {
-      id: 'editor.duplicateLine',
-      name: 'Duplicate Line / Selection',
-      icon: 'copy-plus',
-      shortcut: 'Alt+Shift+D',
-    },
-    {
-      id: 'editor.deleteLine',
-      name: 'Delete Line / Selection',
-      icon: 'trash-2',
-      shortcut: 'Alt+Shift+K',
-    },
+    { id: 'editor.selectLine', name: 'Select Current Line', icon: 'text-select', shortcut: 'Alt+L' },
+    { id: 'editor.duplicateLine', name: 'Duplicate Line / Selection', icon: 'copy-plus', shortcut: 'Alt+Shift+D' },
+    { id: 'editor.deleteLine', name: 'Delete Line / Selection', icon: 'trash-2', shortcut: 'Alt+Shift+K' },
     { id: 'editor.moveLineUp', name: 'Move Line Up', icon: 'arrow-up', shortcut: 'Alt+ArrowUp' },
-    {
-      id: 'editor.moveLineDown',
-      name: 'Move Line Down',
-      icon: 'arrow-down',
-      shortcut: 'Alt+ArrowDown',
-    },
+    { id: 'editor.moveLineDown', name: 'Move Line Down', icon: 'arrow-down', shortcut: 'Alt+ArrowDown' },
     { id: 'editor.indent', name: 'Indent Selection', icon: 'indent-increase', shortcut: 'Tab' },
-    {
-      id: 'editor.outdent',
-      name: 'Outdent Selection',
-      icon: 'indent-decrease',
-      shortcut: 'Shift+Tab',
-    },
+    { id: 'editor.outdent', name: 'Outdent Selection', icon: 'indent-decrease', shortcut: 'Shift+Tab' },
     { id: 'editor.find', name: 'Focus Find', icon: 'search', shortcut: 'Ctrl+F' },
-    { id: 'editor.gotoLine', name: 'Go to Line', icon: 'locate-fixed', shortcut: 'Ctrl+G' },
+    { id: 'editor.gotoLine', name: 'Go to Line', icon: 'locate-fixed', shortcut: 'Ctrl+G' }
   ];
 
   commandItems = computed(() => {
@@ -420,7 +141,7 @@ export class App implements AfterViewChecked {
       type: 'tool' as const,
       favorite: this.favorites().includes(tool.id),
       recent: this.recentTools().includes(tool.id),
-      shortcut: '',
+      shortcut: ''
     }));
 
     const commands = this.editorCommands.map((command) => ({
@@ -428,239 +149,27 @@ export class App implements AfterViewChecked {
       description: 'Editor command',
       type: 'command' as const,
       favorite: false,
-      recent: false,
+      recent: false
     }));
 
     let items = [...tools, ...commands];
 
     if (q) {
       items = items.filter((item) =>
-        `${item.name} ${item.description} ${item.shortcut}`.toLowerCase().includes(q),
+        `${item.name} ${item.description} ${item.shortcut}`.toLowerCase().includes(q)
       );
     }
 
-    return items
-      .sort((a, b) => {
-        if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
-        if (a.recent !== b.recent) return a.recent ? -1 : 1;
-        return a.name.localeCompare(b.name);
-      })
-      .slice(0, 30);
+    return items.sort((a, b) => {
+      if (a.favorite !== b.favorite) return a.favorite ? -1 : 1;
+      if (a.recent !== b.recent) return a.recent ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    }).slice(0, 30);
   });
-  constructor(
-    public workspace: TextWorkspaceService,
-    public ai: LexyraAiService,
-  ) {
+  constructor(public workspace: TextWorkspaceService) {
     document.documentElement.dataset['theme'] = this.dark() ? 'dark' : 'light';
   }
 
-  async openAi(action?: string) {
-    this.disableTypingTool();
-    this.aiOpen.set(true);
-    this.resultOpen.set(false);
-
-    if (action) this.ai.setAction(action);
-
-    this.captureAiSource();
-
-    if (this.ai.api.status() === 'checking' || this.ai.api.status() === 'offline') {
-      await this.ai.api.check();
-    }
-
-    setTimeout(() => {
-      if (this.ai.action() === 'custom' || this.ai.action() === 'generate') {
-        document.getElementById('aiInstruction')?.focus();
-      }
-    });
-  }
-
-  closeAi() {
-    if (this.ai.generating()) this.ai.stop();
-    this.aiOpen.set(false);
-    this.aiConnectionOpen.set(false);
-  }
-
-  captureAiSource() {
-    const e = this.editor?.nativeElement;
-    const text = this.workspace.text();
-
-    if (e && e.selectionStart !== e.selectionEnd) {
-      this.aiSelectionStart = e.selectionStart;
-      this.aiSelectionEnd = e.selectionEnd;
-      this.aiHadSelection = true;
-      this.aiSourceLabel.set('Selected text');
-      return text.slice(e.selectionStart, e.selectionEnd);
-    }
-
-    this.aiSelectionStart = 0;
-    this.aiSelectionEnd = text.length;
-    this.aiHadSelection = false;
-    this.aiSourceLabel.set('Entire document');
-    return text;
-  }
-
-  aiSourceText() {
-    const text = this.workspace.text();
-
-    if (this.aiHadSelection) {
-      const start = Math.max(0, Math.min(this.aiSelectionStart, text.length));
-      const end = Math.max(start, Math.min(this.aiSelectionEnd, text.length));
-      return text.slice(start, end);
-    }
-
-    return text;
-  }
-
-  selectAiAction(id: string) {
-    this.ai.setAction(id);
-
-    setTimeout(() => {
-      if (id === 'custom' || id === 'generate') {
-        document.getElementById('aiInstruction')?.focus();
-      }
-    });
-  }
-
-  async runAi() {
-    const source = this.captureAiSource();
-
-    if (!source.trim() && !this.ai.instruction().trim()) {
-      this.ai.api.error.set('Enter text or an instruction first.');
-      return;
-    }
-
-    try {
-      await this.ai.run(source);
-    } catch {
-      return;
-    }
-  }
-
-  stopAi() {
-    this.ai.stop();
-  }
-
-  async refreshAiModels() {
-    await this.ai.api.check();
-  }
-
-  updateOllamaUrl(value: string) {
-    void value;
-  }
-
-  updateAiModel(value: string) {
-    void value;
-  }
-
-  async copyAiResult() {
-    if (!this.ai.result()) return;
-    await navigator.clipboard.writeText(this.ai.result());
-    this.aiCopied.set(true);
-    setTimeout(() => this.aiCopied.set(false), 1000);
-  }
-
-  insertAiResult() {
-    const output = this.ai.result();
-    if (!output) return;
-
-    const current = this.workspace.text();
-    const e = this.editor?.nativeElement;
-
-    if (this.aiHadSelection) {
-      const start = Math.max(0, Math.min(this.aiSelectionEnd, current.length));
-      const spacer = start > 0 && current[start - 1] !== '\n' ? '\n' : '';
-      const next = current.slice(0, start) + spacer + output + current.slice(start);
-
-      this.workspace.set(next);
-      this.aiSelectionStart = start + spacer.length;
-      this.aiSelectionEnd = this.aiSelectionStart + output.length;
-      this.aiHadSelection = true;
-
-      setTimeout(() => {
-        e?.focus();
-        e?.setSelectionRange(this.aiSelectionStart, this.aiSelectionEnd);
-      });
-
-      return;
-    }
-
-    const start = e?.selectionStart ?? current.length;
-    const end = e?.selectionEnd ?? start;
-    const spacer = current && start === current.length && !current.endsWith('\n') ? '\n' : '';
-    const next = current.slice(0, start) + spacer + output + current.slice(end);
-
-    this.workspace.set(next);
-
-    const resultStart = start + spacer.length;
-    const resultEnd = resultStart + output.length;
-
-    setTimeout(() => {
-      e?.focus();
-      e?.setSelectionRange(resultStart, resultEnd);
-    });
-  }
-
-  replaceWithAiResult() {
-    const output = this.ai.result();
-    if (!output) return;
-
-    const current = this.workspace.text();
-    const e = this.editor?.nativeElement;
-
-    if (this.aiHadSelection) {
-      const start = Math.max(0, Math.min(this.aiSelectionStart, current.length));
-      const end = Math.max(start, Math.min(this.aiSelectionEnd, current.length));
-
-      this.workspace.set(current.slice(0, start) + output + current.slice(end));
-      this.aiSelectionStart = start;
-      this.aiSelectionEnd = start + output.length;
-      this.aiHadSelection = true;
-
-      setTimeout(() => {
-        e?.focus();
-        e?.setSelectionRange(this.aiSelectionStart, this.aiSelectionEnd);
-      });
-
-      return;
-    }
-
-    this.workspace.set(output);
-    this.aiSelectionStart = 0;
-    this.aiSelectionEnd = output.length;
-    this.aiHadSelection = false;
-
-    setTimeout(() => {
-      e?.focus();
-      e?.setSelectionRange(0, output.length);
-    });
-  }
-
-  replaceDocumentWithAiResult() {
-    const output = this.ai.result();
-    if (!output) return;
-
-    this.workspace.set(output);
-    this.aiSelectionStart = 0;
-    this.aiSelectionEnd = output.length;
-    this.aiHadSelection = false;
-
-    setTimeout(() => this.editor?.nativeElement.focus());
-  }
-
-  aiStatusLabel() {
-    switch (this.ai.api.status()) {
-      case 'online':
-        return 'Local AI online';
-      case 'generating':
-        return 'Generating';
-      case 'error':
-        return 'AI error';
-      case 'checking':
-        return 'Checking Ollama';
-      default:
-        return 'Ollama offline';
-    }
-  }
   ngAfterViewChecked() {
     createIcons({ icons });
   }
@@ -794,7 +303,6 @@ export class App implements AfterViewChecked {
       return;
     }
     if (e.key === 'Escape') {
-      this.openToolGroup.set(null);
       this.resultOpen.set(false);
       this.activeOptionTool.set(null);
       this.commandOpen.set(false);
@@ -807,7 +315,6 @@ export class App implements AfterViewChecked {
   selectCategory(id: ToolCategoryItem['id']) {
     this.category.set(id);
     this.search.set('');
-    this.openToolGroup.set(null);
   }
 
   toggleFavorite(id: string, event?: Event) {
@@ -1049,33 +556,19 @@ export class App implements AfterViewChecked {
         e?.focus();
         e?.setSelectionRange(src.start, src.start + output!.length);
       });
-
-      return;
     }
-
-    this.activeTypingTool.set(id);
-    this.typingStart = src.start;
-    this.typingRaw = '';
-    this.resultOpen.set(false);
-
-    setTimeout(() => {
-      const e = this.editor?.nativeElement;
-      e?.focus();
-      e?.setSelectionRange(src.start, src.start);
-    });
-  }
-  readBool(key: string) {
-    return localStorage.getItem(key) === 'true';
-  }
-  saveSearchOptions() {
-    localStorage.setItem('lexyra.search.regex', String(this.searchRegex));
-    localStorage.setItem('lexyra.search.case', String(this.searchCase));
-    localStorage.setItem('lexyra.search.wholeWord', String(this.searchWholeWord));
-    this.refreshSearch();
   }
   escapeRegexText(value: string) {
-    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\
+
+  replace() {
+    if (this.findText)
+      this.workspace.set(this.workspace.text().split(this.findText).join(this.replaceText));
   }
+
+  insertResult()');
+  }
+
   buildSearchRegex(global = true) {
     if (!this.findText) return null;
 
@@ -1110,7 +603,7 @@ export class App implements AfterViewChecked {
       matches.push({
         start: match.index,
         end: match.index + match[0].length,
-        text: match[0],
+        text: match[0]
       });
 
       if (!match[0].length) regex.lastIndex++;
@@ -1386,15 +879,12 @@ export class App implements AfterViewChecked {
     if (!e || !block) return;
 
     const indent = ' '.repeat(Math.max(1, this.options.indent));
-    const changed = block.text
-      .split('\n')
-      .map((line) => indent + line)
-      .join('\n');
+    const changed = block.text.split('\n').map((line) => indent + line).join('\n');
 
     this.workspace.set(
       this.workspace.text().slice(0, block.start) +
-        changed +
-        this.workspace.text().slice(block.end),
+      changed +
+      this.workspace.text().slice(block.end)
     );
 
     setTimeout(() => {
@@ -1411,15 +901,12 @@ export class App implements AfterViewChecked {
 
     const size = Math.max(1, this.options.indent);
     const pattern = new RegExp(`^(?:\\t| {1,${size}})`);
-    const changed = block.text
-      .split('\n')
-      .map((line) => line.replace(pattern, ''))
-      .join('\n');
+    const changed = block.text.split('\n').map((line) => line.replace(pattern, '')).join('\n');
 
     this.workspace.set(
       this.workspace.text().slice(0, block.start) +
-        changed +
-        this.workspace.text().slice(block.end),
+      changed +
+      this.workspace.text().slice(block.end)
     );
 
     setTimeout(() => {

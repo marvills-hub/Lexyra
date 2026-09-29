@@ -11,7 +11,7 @@
       <button (click)="selectCategory('convert')">Convert</button>
       <button (click)="selectCategory('code')">Code</button>
       <button (click)="selectCategory('generate')">Generate</button>
-      <button class="ai-menu" (click)="openAi()"><i data-lucide="sparkles"></i>AI</button>
+      <button class="ai-menu"><i data-lucide="sparkles"></i>AI</button>
     </nav>
     <div class="top-actions">
       <span class="engine"><span></span>MANUAL</span>
@@ -40,79 +40,20 @@
       </div>
     </div>
 
-    <div class="ribbon-tools grouped-ribbon" (mouseleave)="closeToolGroups()">
-      @for (group of toolbarGroups().groups; track group.id) {
-        <div class="tool-group" [class.open]="openToolGroup() === group.id">
-          <button
-            class="tool-group-trigger"
-            type="button"
-            [class.active]="openToolGroup() === group.id"
-            (click)="toggleToolGroup(group.id, $event)"
-            [attr.aria-label]="group.name"
-            [attr.data-group-tooltip]="group.name"
-          >
-            <i class="group-main-icon" [attr.data-lucide]="group.icon"></i>
-            <i class="group-chevron" data-lucide="chevron-down"></i>
-          </button>
-          @if (openToolGroup() === group.id) {
-            <div class="tool-group-menu" (click)="$event.stopPropagation()">
-              <div class="tool-group-head">
-                <span><i [attr.data-lucide]="group.icon"></i>{{ group.name }}</span>
-                <small>{{ group.tools.length }} tools</small>
-              </div>
-              <div class="tool-group-items">
-                @for (tool of group.tools; track tool.id) {
-                  <div class="tool-group-row" [class.active]="activeTypingTool() === tool.id">
-                    <button
-                      class="group-tool-main"
-                      type="button"
-                      (click)="runGroupedTool(tool.id)"
-                      [title]="tool.description"
-                    >
-                      <span class="group-tool-icon"><i [attr.data-lucide]="tool.icon"></i></span>
-                      <span class="group-tool-copy">
-                        <strong>{{ tool.name }}</strong>
-                        <small>{{ tool.description }}</small>
-                      </span>
-                      @if (activeTypingTool() === tool.id) {
-                        <span class="group-active-dot"></span>
-                      }
-                    </button>
-                    <button
-                      class="group-tool-action favorite"
-                      type="button"
-                      [class.on]="isFavorite(tool.id)"
-                      (click)="toggleFavorite(tool.id, $event)"
-                      [title]="isFavorite(tool.id) ? 'Remove favorite' : 'Add favorite'"
-                    >
-                      <i data-lucide="star"></i>
-                    </button>
-                    @if (hasOptions(tool.id)) {
-                      <button
-                        class="group-tool-action"
-                        type="button"
-                        [class.on]="activeOptionTool() === tool.id"
-                        (click)="openOptions(tool.id, $event); closeToolGroups()"
-                        title="Tool options"
-                      >
-                        <i data-lucide="sliders-horizontal"></i>
-                      </button>
-                    }
-                  </div>
-                }
-              </div>
-            </div>
-          }
-        </div>
-      }
-      @for (tool of toolbarGroups().standalone; track tool.id) {
+    <div class="ribbon-tools">
+      @for (tool of visibleTools(); track tool.id) {
         <button
-          class="ribbon-tool standalone-tool"
+          class="ribbon-tool"
           [class.active]="activeTypingTool() === tool.id"
           type="button"
           (click)="run(tool.id)"
           [attr.aria-label]="tool.name"
-          [attr.data-tooltip]="tool.name + ' · ' + tool.description"
+          [attr.data-tooltip]="
+            tool.name +
+            ' — ' +
+            tool.description +
+            (activeTypingTool() === tool.id ? ' — ACTIVE FOR TYPING' : '')
+          "
         >
           <i [attr.data-lucide]="tool.icon"></i>
           <span
@@ -121,7 +62,7 @@
             (click)="toggleFavorite(tool.id, $event)"
             [title]="isFavorite(tool.id) ? 'Remove favorite' : 'Add favorite'"
           >
-            <i data-lucide="star"></i>
+            <i [attr.data-lucide]="isFavorite(tool.id) ? 'star' : 'star'"></i>
           </span>
           @if (hasOptions(tool.id)) {
             <span
@@ -136,6 +77,7 @@
         </button>
       }
     </div>
+
     <div class="ribbon-search">
       <i data-lucide="search"></i>
       <input
@@ -331,11 +273,8 @@
       }
 
       <div class="sidebar-spacer"></div>
-      <button class="sidebar-ai" [class.active]="aiOpen()" (click)="openAi()">
-        <i data-lucide="sparkles"></i
-        ><span
-          ><strong>Lexyra AI</strong><small>{{ aiStatusLabel() }}</small></span
-        >
+      <button class="sidebar-ai">
+        <i data-lucide="sparkles"></i><span><strong>Lexyra AI</strong><small>Optional</small></span>
       </button>
     </aside>
 
@@ -391,7 +330,7 @@
           </div>
         </div>
 
-        <div class="editor-zone" [class.with-result]="resultOpen()" [class.with-ai]="aiOpen()">
+        <div class="editor-zone" [class.with-result]="resultOpen()">
           <div class="editor-pane">
             <textarea
               #editor
@@ -431,200 +370,6 @@
                 <button class="primary" (click)="replaceWithResult()">
                   <i data-lucide="replace"></i>Replace document
                 </button>
-              </div>
-            </aside>
-          }
-
-          @if (aiOpen()) {
-            <aside class="ai-pane">
-              <div class="ai-head">
-                <div class="ai-head-title">
-                  <span class="ai-logo"><i data-lucide="sparkles"></i></span>
-                  <div>
-                    <strong>Lexyra AI</strong>
-                    <small>{{ aiStatusLabel() }}</small>
-                  </div>
-                </div>
-
-                <div class="ai-head-actions">
-                  <span
-                    class="ai-status-dot"
-                    [class.online]="ai.api.status() === 'online'"
-                    [class.generating]="ai.api.status() === 'generating'"
-                    [class.error]="ai.api.status() === 'error'"
-                  ></span>
-
-                  <button type="button" (click)="closeAi()" title="Close AI">
-                    <i data-lucide="x"></i>
-                  </button>
-                </div>
-              </div>
-<div class="ai-controls">
-                <div class="ai-cloud-provider">
-                  <i data-lucide="cloud"></i>
-                  <span>
-                    <strong>LEXyRA CLOUD AI</strong>
-                    <small>{{ ai.api.model() || 'Workers AI' }}</small>
-                  </span>
-                </div>
-                <span class="ai-source">
-                  <i data-lucide="scan-text"></i>
-                  {{ aiSourceLabel() }}
-                </span>
-              </div>
-
-              <div class="ai-actions">
-                @for (action of ai.actions; track action.id) {
-                  <button
-                    type="button"
-                    [class.active]="ai.action() === action.id"
-                    (click)="selectAiAction(action.id)"
-                    [title]="action.description"
-                  >
-                    <i [attr.data-lucide]="action.icon"></i>
-                    <span>{{ action.name }}</span>
-                  </button>
-                }
-              </div>
-
-              <div class="ai-prompt-area">
-                @if (ai.action() === 'custom' || ai.action() === 'generate') {
-                  <label>
-                    <span>{{
-                      ai.action() === 'generate'
-                        ? 'WHAT SHOULD LEXYRA GENERATE?'
-                        : 'CUSTOM INSTRUCTION'
-                    }}</span>
-                    <textarea
-                      id="aiInstruction"
-                      [ngModel]="ai.instruction()"
-                      (ngModelChange)="ai.instruction.set($event)"
-                      [placeholder]="
-                        ai.action() === 'generate'
-                          ? 'Example: Write a professional project introduction...'
-                          : 'Example: Rewrite this as a concise technical explanation...'
-                      "
-                    ></textarea>
-                  </label>
-                }
-
-                @if (ai.action() === 'translate') {
-                  <label class="ai-language">
-                    <span>TARGET LANGUAGE</span>
-                    <input
-                      [ngModel]="ai.language()"
-                      (ngModelChange)="ai.setLanguage($event)"
-                      placeholder="English"
-                    />
-                  </label>
-                }
-
-                <div class="ai-run-row">
-                  <div class="ai-run-context">
-                    @if (aiHadSelection) {
-                      <i data-lucide="text-select"></i>
-                      <span>AI will use the selected text</span>
-                    } @else {
-                      <i data-lucide="file-text"></i>
-                      <span>AI will use the document</span>
-                    }
-                  </div>
-
-                  @if (ai.generating()) {
-                    <button class="ai-stop" type="button" (click)="stopAi()">
-                      <i data-lucide="square"></i>
-                      Stop
-                    </button>
-                  } @else {
-                    <button
-                      class="ai-run"
-                      type="button"
-                      (click)="runAi()"
-                      [disabled]="!ai.api.model()"
-                    >
-                      <i data-lucide="sparkles"></i>
-                      Run AI
-                    </button>
-                  }
-                </div>
-              </div>
-
-              <div class="ai-output">
-                <div class="ai-output-head">
-                  <div>
-                    <i data-lucide="bot"></i>
-                    <strong>AI Result</strong>
-                  </div>
-
-                  @if (ai.generating()) {
-                    <span class="ai-streaming">
-                      <i data-lucide="loader-circle"></i>
-                      Streaming
-                    </span>
-                  }
-                </div>
-
-                @if (ai.result()) {
-                  <textarea readonly [value]="ai.result()"></textarea>
-                } @else {
-                  <div class="ai-empty">
-                    @if (ai.api.status() === 'offline') {
-                      <i data-lucide="unplug"></i>
-                      <strong>Lexyra AI is unavailable</strong>
-                      <span>The cloud AI service could not be reached. Manual tools remain available.</span>
-                      <button type="button" (click)="refreshAiModels()">
-                        <i data-lucide="refresh-cw"></i>
-                        Retry
-                      </button>
-                    } @else if (ai.api.status() === 'error') {
-                      <i data-lucide="circle-alert"></i>
-                      <strong>AI request failed</strong>
-                      <span>{{ ai.api.error() }}</span>
-                    } @else if (ai.generating()) {
-                      <i class="spin" data-lucide="loader-circle"></i>
-                      <strong>Lexyra is thinking...</strong>
-                      <span>The response will appear here as it streams.</span>
-                    } @else {
-                      <i data-lucide="sparkles"></i>
-                      <strong>Ready for Lexyra AI</strong>
-                      <span>Choose an action and run it on your text using Lexyra Cloud AI.</span>
-                    }
-                  </div>
-                }
-              </div>
-
-              <div class="ai-result-actions">
-                <button type="button" (click)="copyAiResult()" [disabled]="!ai.result()">
-                  @if (aiCopied()) {
-                    <i data-lucide="check"></i>
-                    Copied
-                  } @else {
-                    <i data-lucide="copy"></i>
-                    Copy
-                  }
-                </button>
-
-                <button type="button" (click)="insertAiResult()" [disabled]="!ai.result()">
-                  <i data-lucide="corner-down-left"></i>
-                  Insert
-                </button>
-
-                <button type="button" (click)="replaceWithAiResult()" [disabled]="!ai.result()">
-                  <i data-lucide="replace"></i>
-                  {{ aiHadSelection ? 'Replace selection' : 'Replace document' }}
-                </button>
-
-                @if (aiHadSelection) {
-                  <button
-                    class="ai-document-replace"
-                    type="button"
-                    (click)="replaceDocumentWithAiResult()"
-                    [disabled]="!ai.result()"
-                    title="Replace the entire document with this result"
-                  >
-                    <i data-lucide="file-output"></i>
-                  </button>
-                }
               </div>
             </aside>
           }
@@ -816,4 +561,3 @@
     </div>
   }
 </div>
-

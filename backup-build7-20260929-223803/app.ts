@@ -463,8 +463,8 @@ export class App implements AfterViewChecked {
 
     this.captureAiSource();
 
-    if (this.ai.api.status() === 'checking' || this.ai.api.status() === 'offline') {
-      await this.ai.api.check();
+    if (this.ai.ollama.status() === 'checking' || this.ai.ollama.status() === 'offline') {
+      await this.ai.ollama.refreshModels();
     }
 
     setTimeout(() => {
@@ -525,7 +525,7 @@ export class App implements AfterViewChecked {
     const source = this.captureAiSource();
 
     if (!source.trim() && !this.ai.instruction().trim()) {
-      this.ai.api.error.set('Enter text or an instruction first.');
+      this.ai.ollama.error.set('Enter text or an instruction first.');
       return;
     }
 
@@ -541,15 +541,15 @@ export class App implements AfterViewChecked {
   }
 
   async refreshAiModels() {
-    await this.ai.api.check();
+    await this.ai.ollama.refreshModels();
   }
 
   updateOllamaUrl(value: string) {
-    void value;
+    this.ai.ollama.setBaseUrl(value);
   }
 
   updateAiModel(value: string) {
-    void value;
+    this.ai.ollama.setModel(value);
   }
 
   async copyAiResult() {
@@ -648,7 +648,7 @@ export class App implements AfterViewChecked {
   }
 
   aiStatusLabel() {
-    switch (this.ai.api.status()) {
+    switch (this.ai.ollama.status()) {
       case 'online':
         return 'Local AI online';
       case 'generating':
@@ -1595,4 +1595,3 @@ export class App implements AfterViewChecked {
     localStorage.setItem('lexyra.theme', t);
   }
 }
-

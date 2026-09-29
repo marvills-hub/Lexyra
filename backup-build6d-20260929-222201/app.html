@@ -48,10 +48,11 @@
             type="button"
             [class.active]="openToolGroup() === group.id"
             (click)="toggleToolGroup(group.id, $event)"
-            [attr.aria-label]="group.name"
-            [attr.data-group-tooltip]="group.name"
+            [title]="group.name + ' · ' + group.tools.length + ' tools'"
           >
-            <i class="group-main-icon" [attr.data-lucide]="group.icon"></i>
+            <i [attr.data-lucide]="group.icon"></i>
+            <span>{{ group.name }}</span>
+            <small>{{ group.tools.length }}</small>
             <i class="group-chevron" data-lucide="chevron-down"></i>
           </button>
           @if (openToolGroup() === group.id) {
@@ -449,24 +450,87 @@
                 <div class="ai-head-actions">
                   <span
                     class="ai-status-dot"
-                    [class.online]="ai.api.status() === 'online'"
-                    [class.generating]="ai.api.status() === 'generating'"
-                    [class.error]="ai.api.status() === 'error'"
+                    [class.online]="ai.ollama.status() === 'online'"
+                    [class.generating]="ai.ollama.status() === 'generating'"
+                    [class.error]="ai.ollama.status() === 'error'"
                   ></span>
+
+                  <button
+                    type="button"
+                    (click)="aiConnectionOpen.set(!aiConnectionOpen())"
+                    title="AI connection settings"
+                  >
+                    <i data-lucide="settings-2"></i>
+                  </button>
 
                   <button type="button" (click)="closeAi()" title="Close AI">
                     <i data-lucide="x"></i>
                   </button>
                 </div>
               </div>
-<div class="ai-controls">
-                <div class="ai-cloud-provider">
-                  <i data-lucide="cloud"></i>
-                  <span>
-                    <strong>LEXyRA CLOUD AI</strong>
-                    <small>{{ ai.api.model() || 'Workers AI' }}</small>
-                  </span>
+
+              @if (aiConnectionOpen()) {
+                <div class="ai-connection">
+                  <div class="ai-connection-row">
+                    <label>
+                      <span>Ollama URL</span>
+                      <input
+                        [ngModel]="ai.ollama.baseUrl()"
+                        (ngModelChange)="updateOllamaUrl($event)"
+                        placeholder="http://localhost:11434"
+                      />
+                    </label>
+
+                    <button type="button" (click)="refreshAiModels()" [disabled]="ai.generating()">
+                      <i data-lucide="refresh-cw"></i>
+                      Connect
+                    </button>
+                  </div>
+
+                  @if (ai.ollama.error()) {
+                    <div class="ai-connection-error">
+                      <i data-lucide="circle-alert"></i>
+                      <span>{{ ai.ollama.error() }}</span>
+                    </div>
+                  }
+
+                  <div class="ai-local-note">
+                    <i data-lucide="shield-check"></i>
+                    <span
+                      >Ollama runs locally. Manual Lexyra tools remain available without AI.</span
+                    >
+                  </div>
                 </div>
+              }
+
+              <div class="ai-controls">
+                <label class="ai-model">
+                  <span>MODEL</span>
+                  <select
+                    [ngModel]="ai.ollama.model()"
+                    (ngModelChange)="updateAiModel($event)"
+                    [disabled]="!ai.ollama.models().length || ai.generating()"
+                  >
+                    @if (!ai.ollama.models().length) {
+                      <option value="">No local models detected</option>
+                    }
+
+                    @for (model of ai.ollama.models(); track model.name) {
+                      <option [value]="model.name">{{ model.name }}</option>
+                    }
+                  </select>
+                </label>
+
+                <button
+                  class="ai-refresh"
+                  type="button"
+                  (click)="refreshAiModels()"
+                  [disabled]="ai.generating()"
+                  title="Refresh models"
+                >
+                  <i data-lucide="refresh-cw"></i>
+                </button>
+
                 <span class="ai-source">
                   <i data-lucide="scan-text"></i>
                   {{ aiSourceLabel() }}
@@ -540,7 +604,7 @@
                       class="ai-run"
                       type="button"
                       (click)="runAi()"
-                      [disabled]="!ai.api.model()"
+                      [disabled]="!ai.ollama.model()"
                     >
                       <i data-lucide="sparkles"></i>
                       Run AI
@@ -568,26 +632,26 @@
                   <textarea readonly [value]="ai.result()"></textarea>
                 } @else {
                   <div class="ai-empty">
-                    @if (ai.api.status() === 'offline') {
+                    @if (ai.ollama.status() === 'offline') {
                       <i data-lucide="unplug"></i>
-                      <strong>Lexyra AI is unavailable</strong>
-                      <span>The cloud AI service could not be reached. Manual tools remain available.</span>
+                      <strong>Ollama is offline</strong>
+                      <span>Start Ollama locally, then refresh the connection.</span>
                       <button type="button" (click)="refreshAiModels()">
                         <i data-lucide="refresh-cw"></i>
-                        Retry
+                        Retry connection
                       </button>
-                    } @else if (ai.api.status() === 'error') {
+                    } @else if (ai.ollama.status() === 'error') {
                       <i data-lucide="circle-alert"></i>
                       <strong>AI request failed</strong>
-                      <span>{{ ai.api.error() }}</span>
+                      <span>{{ ai.ollama.error() }}</span>
                     } @else if (ai.generating()) {
                       <i class="spin" data-lucide="loader-circle"></i>
                       <strong>Lexyra is thinking...</strong>
                       <span>The response will appear here as it streams.</span>
                     } @else {
                       <i data-lucide="sparkles"></i>
-                      <strong>Ready for Lexyra AI</strong>
-                      <span>Choose an action and run it on your text using Lexyra Cloud AI.</span>
+                      <strong>Ready for local AI</strong>
+                      <span>Choose an action and run it on your text.</span>
                     }
                   </div>
                 }
@@ -816,4 +880,3 @@
     </div>
   }
 </div>
-

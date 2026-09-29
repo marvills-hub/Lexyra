@@ -2164,36 +2164,3 @@ button {
     display: none !important;
   }
 }
-
-/* Build 7 production cloud AI */
-.ai-cloud-provider {
-  min-width: 0;
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-}
-.ai-cloud-provider > i {
-  width: 14px;
-  height: 14px;
-  color: var(--purple);
-}
-.ai-cloud-provider > span {
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.ai-cloud-provider strong {
-  color: var(--text);
-  font-size: 7px;
-  letter-spacing: .7px;
-}
-.ai-cloud-provider small {
-  max-width: 220px;
-  overflow: hidden;
-  color: var(--muted2);
-  font-size: 6px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}

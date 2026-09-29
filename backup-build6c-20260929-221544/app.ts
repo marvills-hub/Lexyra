@@ -125,252 +125,6 @@ export class App implements AfterViewChecked {
       .filter((t): t is TextTool => !!t),
   );
 
-  openToolGroup = signal<string | null>(null);
-  toolbarGroupDefinitions = [
-    {
-      id: 'case',
-      name: 'Case',
-      icon: 'case-sensitive',
-      ids: [
-        'upper',
-        'lower',
-        'title',
-        'sentence',
-        'capitalize',
-        'toggleCase',
-        'alternating',
-        'inverseAlternating',
-      ],
-    },
-    {
-      id: 'naming',
-      name: 'Naming',
-      icon: 'braces',
-      ids: [
-        'camel',
-        'pascal',
-        'snake',
-        'kebab',
-        'constant',
-        'dot',
-        'path',
-        'slug',
-        'train',
-        'spaceCase',
-      ],
-    },
-    {
-      id: 'markdown',
-      name: 'Markdown',
-      icon: 'heading',
-      ids: [
-        'quote',
-        'markdownBold',
-        'markdownItalic',
-        'markdownStrike',
-        'markdownCode',
-        'markdownH1',
-        'markdownH2',
-        'markdownH3',
-      ],
-    },
-    {
-      id: 'whitespace',
-      name: 'Whitespace',
-      icon: 'space',
-      ids: [
-        'trim',
-        'spaces',
-        'trimLines',
-        'empty',
-        'collapseEmpty',
-        'tabsSpaces',
-        'spacesTabs',
-        'stripTrailing',
-        'stripLeading',
-      ],
-    },
-    {
-      id: 'remove',
-      name: 'Remove',
-      icon: 'eraser',
-      ids: [
-        'duplicates',
-        'duplicateWords',
-        'uniqueWords',
-        'diacritics',
-        'removeHtml',
-        'removePunctuation',
-        'removeNumbersText',
-        'removeLetters',
-        'removeSymbols',
-        'removeEmoji',
-        'removeUrls',
-        'removeEmails',
-        'removeInvisible',
-      ],
-    },
-    {
-      id: 'normalize',
-      name: 'Normalize',
-      icon: 'sparkles',
-      ids: ['unicode', 'normalizeQuotes', 'normalizeDashes'],
-    },
-    {
-      id: 'sort',
-      name: 'Sort',
-      icon: 'arrow-down-a-z',
-      ids: [
-        'sortAsc',
-        'sortDesc',
-        'sortLengthAsc',
-        'sortLengthDesc',
-        'reverseLines',
-        'reverseText',
-        'shuffleLines',
-      ],
-    },
-    {
-      id: 'lists',
-      name: 'Lists',
-      icon: 'list',
-      ids: ['number', 'removeNumbers', 'bullets', 'dashList', 'checkboxList'],
-    },
-    {
-      id: 'lines',
-      name: 'Lines',
-      icon: 'rows-3',
-      ids: ['joinLines', 'splitWords', 'prefixLines', 'suffixComma', 'commaList', 'semicolonList'],
-    },
-    {
-      id: 'encode',
-      name: 'Encode',
-      icon: 'binary',
-      ids: [
-        'urlEncode',
-        'urlDecode',
-        'base64Encode',
-        'base64Decode',
-        'htmlEncode',
-        'htmlDecode',
-        'rot13',
-      ],
-    },
-    {
-      id: 'codes',
-      name: 'Text Codes',
-      icon: 'languages',
-      ids: [
-        'textBinary',
-        'binaryText',
-        'textHex',
-        'hexText',
-        'textUnicode',
-        'unicodeText',
-        'decimalCodes',
-        'decimalText',
-      ],
-    },
-    {
-      id: 'uri',
-      name: 'URI & Escapes',
-      icon: 'globe',
-      ids: ['uriComponent', 'uriDecode', 'newlineEscapes', 'escapesNewline'],
-    },
-    {
-      id: 'json',
-      name: 'JSON',
-      icon: 'braces',
-      ids: ['jsonPretty', 'jsonMinify', 'jsonValidate', 'queryJson', 'jsonQuery'],
-    },
-    { id: 'data', name: 'Data', icon: 'table', ids: ['csvJson', 'jsonCsv'] },
-    {
-      id: 'code',
-      name: 'Code',
-      icon: 'code-2',
-      ids: ['htmlPretty', 'htmlMinify', 'cssMinify', 'sqlPretty', 'xmlPretty', 'xmlMinify'],
-    },
-    { id: 'passwords', name: 'Passwords', icon: 'key-round', ids: ['password', 'passphrase'] },
-    {
-      id: 'random',
-      name: 'Random',
-      icon: 'dices',
-      ids: ['uuid', 'random', 'randomAlpha', 'randomNumeric'],
-    },
-    { id: 'placeholder', name: 'Placeholder', icon: 'text', ids: ['lorem', 'loremParagraphs'] },
-    { id: 'date', name: 'Date & Time', icon: 'clock', ids: ['timestamp', 'dateIso'] },
-    {
-      id: 'extract',
-      name: 'Extract',
-      icon: 'scan-search',
-      ids: ['emails', 'urls', 'numbersOnly', 'hashtags', 'mentions'],
-    },
-    {
-      id: 'analysis',
-      name: 'Analyze',
-      icon: 'chart-bar',
-      ids: [
-        'frequency',
-        'lineLength',
-        'longestWords',
-        'duplicateLineReport',
-        'alphabeticalWords',
-        'statsReport',
-      ],
-    },
-    {
-      id: 'escape',
-      name: 'Escape',
-      icon: 'regex',
-      ids: ['escapeJs', 'unescapeJs', 'escapeRegex', 'quoteJsonString', 'unquoteJsonString'],
-    },
-    {
-      id: 'indent',
-      name: 'Indent',
-      icon: 'indent-increase',
-      ids: ['indent2', 'indent4', 'outdent'],
-    },
-    {
-      id: 'endings',
-      name: 'Line Endings',
-      icon: 'wrap-text',
-      ids: ['lineEndingLf', 'lineEndingCrlf'],
-    },
-    { id: 'hash', name: 'Hash', icon: 'shield-check', ids: ['sha256', 'sha1', 'sha384', 'sha512'] },
-    { id: 'inspect', name: 'Inspect', icon: 'scan-search', ids: ['invisible', 'passwordStrength'] },
-  ];
-
-  toolbarGroups = computed(() => {
-    const visible = this.visibleTools();
-    const visibleIds = new Set(visible.map((tool) => tool.id));
-    const groups = this.toolbarGroupDefinitions
-      .map((group) => ({
-        ...group,
-        tools: group.ids
-          .map((id) => visible.find((tool) => tool.id === id))
-          .filter((tool): tool is TextTool => !!tool),
-      }))
-      .filter((group) => group.tools.length);
-    const groupedIds = new Set(groups.flatMap((group) => group.tools.map((tool) => tool.id)));
-    const standalone = visible.filter(
-      (tool) => visibleIds.has(tool.id) && !groupedIds.has(tool.id),
-    );
-    return { groups, standalone };
-  });
-
-  toggleToolGroup(id: string, event?: Event) {
-    event?.stopPropagation();
-    this.openToolGroup.set(this.openToolGroup() === id ? null : id);
-  }
-
-  closeToolGroups() {
-    this.openToolGroup.set(null);
-  }
-
-  async runGroupedTool(id: string) {
-    this.openToolGroup.set(null);
-    await this.run(id);
-  }
   editorCommands = [
     { id: 'editor.selectAll', name: 'Select All', icon: 'scan-text', shortcut: 'Ctrl+A' },
     {
@@ -463,8 +217,8 @@ export class App implements AfterViewChecked {
 
     this.captureAiSource();
 
-    if (this.ai.api.status() === 'checking' || this.ai.api.status() === 'offline') {
-      await this.ai.api.check();
+    if (this.ai.ollama.status() === 'checking' || this.ai.ollama.status() === 'offline') {
+      await this.ai.ollama.refreshModels();
     }
 
     setTimeout(() => {
@@ -525,7 +279,7 @@ export class App implements AfterViewChecked {
     const source = this.captureAiSource();
 
     if (!source.trim() && !this.ai.instruction().trim()) {
-      this.ai.api.error.set('Enter text or an instruction first.');
+      this.ai.ollama.error.set('Enter text or an instruction first.');
       return;
     }
 
@@ -541,15 +295,15 @@ export class App implements AfterViewChecked {
   }
 
   async refreshAiModels() {
-    await this.ai.api.check();
+    await this.ai.ollama.refreshModels();
   }
 
   updateOllamaUrl(value: string) {
-    void value;
+    this.ai.ollama.setBaseUrl(value);
   }
 
   updateAiModel(value: string) {
-    void value;
+    this.ai.ollama.setModel(value);
   }
 
   async copyAiResult() {
@@ -648,7 +402,7 @@ export class App implements AfterViewChecked {
   }
 
   aiStatusLabel() {
-    switch (this.ai.api.status()) {
+    switch (this.ai.ollama.status()) {
       case 'online':
         return 'Local AI online';
       case 'generating':
@@ -794,7 +548,6 @@ export class App implements AfterViewChecked {
       return;
     }
     if (e.key === 'Escape') {
-      this.openToolGroup.set(null);
       this.resultOpen.set(false);
       this.activeOptionTool.set(null);
       this.commandOpen.set(false);
@@ -807,7 +560,6 @@ export class App implements AfterViewChecked {
   selectCategory(id: ToolCategoryItem['id']) {
     this.category.set(id);
     this.search.set('');
-    this.openToolGroup.set(null);
   }
 
   toggleFavorite(id: string, event?: Event) {
@@ -1595,4 +1347,3 @@ export class App implements AfterViewChecked {
     localStorage.setItem('lexyra.theme', t);
   }
 }
-

@@ -1,6 +1,6 @@
 ﻿import { Injectable, computed, signal } from '@angular/core';
 import { LEXYRA_AI_ACTIONS, buildAiPrompt } from './ai-prompts';
-import { LexyraAiApiService } from './lexyra-ai-api.service';
+import { OllamaService } from './ollama.service';
 
 @Injectable({ providedIn: 'root' })
 export class LexyraAiService {
@@ -9,9 +9,9 @@ export class LexyraAiService {
   readonly action = signal(localStorage.getItem('lexyra.ai.action') || 'improve');
   readonly instruction = signal('');
   readonly language = signal(localStorage.getItem('lexyra.ai.language') || 'English');
-  readonly generating = computed(() => this.api.status() === 'generating');
+  readonly generating = computed(() => this.ollama.status() === 'generating');
 
-  constructor(readonly api: LexyraAiApiService) {}
+  constructor(readonly ollama: OllamaService) {}
 
   setAction(value: string) {
     this.action.set(value);
@@ -29,25 +29,14 @@ export class LexyraAiService {
   }
 
   stop() {
-    this.api.stop();
+    this.ollama.stop();
   }
 
   async run(text: string) {
-    const prompt = buildAiPrompt(
-      this.action(),
-      text,
-      this.instruction(),
-      this.language(),
-    );
-
+    const prompt = buildAiPrompt(this.action(), text, this.instruction(), this.language());
     if (!prompt.trim()) throw new Error('Enter text or an AI instruction first.');
-
     this.result.set('');
-
-    await this.api.generate(prompt, (chunk) => {
-      this.result.update((current) => current + chunk);
-    });
-
+    await this.ollama.generate(prompt, (chunk) => this.result.update((current) => current + chunk));
     return this.result();
   }
 }
